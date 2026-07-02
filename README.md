@@ -1,4 +1,4 @@
-# Climbable-Trees Mapping — v1 (Tier A)
+# Climbable-Trees — candidate finder
 
 Given a location and a user's body dimensions, return a **ranked,
 confidence-tagged list of nearby trees** plausibly climbable via a reachable
@@ -7,12 +7,30 @@ ladder of sufficiently-thick branches.
 > **This tool filters and ranks. It never certifies that a tree is safe to
 > climb.** Every number carries an error band; a waiver covers residual risk.
 
-This repository is the **v1 / Tier A** release: OpenTrees-style ingestion →
-species prior + DBH size → **form-based** reach-match → PostGIS → MapLibre.
-Zero novel ML, zero legal risk. **Tier B (aerial detection + eligibility/hazard
-reconciliation) and Tier C (street-level geometry) are now implemented** (see
-below); Premium (phone-LiDAR → QSM) remains **intentionally deferred** — a clean
-module seam is left for it (see "Module seams" below).
+**One unified assessment — no tiers.** Each tree gets a single `score`, a single
+`confidence`, and a flat `provenance.signals` list naming exactly what
+contributed. The available signals are:
+
+| Signal | Source | Role |
+|---|---|---|
+| `species_prior` | curated genus wood/form table | wood strength × scaffold form × (1 − shed risk) |
+| `trunk_size` | inventory DBH (or height→DBH allometry) | saturating size plausibility prior |
+| `eligibility` | OSM land-use / parcels | gate: private parcel ⇒ excluded from results |
+| `hazard` | OSM power lines / roads / waterways | multiplicative proximity **penalty** (never positive) |
+| `aerial_detection` | crown detector (DeepForest) | finds trees where no inventory exists |
+| `street_geometry` | Mapillary monocular CV | measured DBH cross-check + coarse branch ladder |
+
+Signals contribute only when present; missing ones are **omitted, not zeroed**,
+and lower `confidence`. `species_prior` + `trunk_size` are the always-available
+anchor; `street_geometry` (measured branch geometry) upgrades the reach-match
+from a form-based guess to a measured ladder when the offline enrichment has run.
+
+**To deploy, see [DEPLOY.md](DEPLOY.md).** Phone-LiDAR → QSM (dense point-cloud
+branch measurement) remains a documented future signal with a clean seam.
+
+> Note: some internal module directories are still named `tierB/` / `tierC/` —
+> these are just signal-provider packages; the tier concept is gone from the
+> product, API, and UI.
 
 ---
 

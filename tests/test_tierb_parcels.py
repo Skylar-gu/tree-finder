@@ -44,7 +44,7 @@ def test_private_parcel_excludes():
     r = assess_eligibility(-122.0, 45.0, ctx, incoming_public_flag=True)
     assert r.public_flag is False
     assert r.excluded is True
-    assert "B:parcels" in r.tiers
+    assert "parcels" in r.tiers
 
 
 def test_public_park_confirms_eligible():
@@ -60,7 +60,7 @@ def test_no_containment_keeps_incoming_flag():
     assert assess_eligibility(-122.0, 45.0, ctx, incoming_public_flag=True).public_flag is True
     # aerial-detected with no prior -> defaults public (biased public stock)
     r = assess_eligibility(-122.0, 45.0, ctx, incoming_public_flag=None, detected=True)
-    assert r.public_flag is True and "B:aerial" in r.tiers
+    assert r.public_flag is True and "aerial_detection" in r.tiers
 
 
 def test_power_line_proximity_penalises_not_excludes():

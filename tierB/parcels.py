@@ -158,9 +158,9 @@ def assess_eligibility(
                 f"{f.kind.replace('_', ' ')} within {dist:.1f} m (×{mult})"
             )
 
-    tiers = ["B:parcels"]
+    tiers = ["parcels"]
     if detected:
-        tiers.insert(0, "B:aerial")
+        tiers.insert(0, "aerial_detection")
 
     return EligibilityResult(
         public_flag=public_flag,

@@ -15,6 +15,10 @@ from .connection import get_conn
 
 MIGRATIONS_DIR = os.path.join(os.path.dirname(__file__), "migrations")
 
+# DB-free demo backend: set DEMO_MODE=1 to serve the bundled sample from memory
+# (no PostGIS). See db/demo_repo.py. Production path is unaffected when unset.
+_DEMO = os.getenv("DEMO_MODE", "").lower() in ("1", "true", "yes")
+
 
 def _h3(lat: float, lon: float, res: int) -> Optional[str]:
     try:
@@ -27,6 +31,10 @@ def _h3(lat: float, lon: float, res: int) -> Optional[str]:
 
 def migrate() -> None:
     """Apply all *.sql migrations in order (idempotent)."""
+    if _DEMO:
+        from . import demo_repo
+
+        return demo_repo.migrate()
     files = sorted(f for f in os.listdir(MIGRATIONS_DIR) if f.endswith(".sql"))
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -107,6 +115,13 @@ def query_trees(
     Uses the GiST index via ST_DWithin (geography cast for metric distance).
     Public/eligible gate (invariant #3) is applied here.
     """
+    if _DEMO:
+        from . import demo_repo
+
+        return demo_repo.query_trees(
+            lon=lon, lat=lat, radius_m=radius_m,
+            public_only=public_only, min_score=min_score, limit=limit,
+        )
     where = ["ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint(%(lon)s,%(lat)s),4326)::geography, %(radius)s)"]
     if public_only:
         # Invariant #3: serve only public AND Tier-B-eligible trees (private
@@ -150,6 +165,12 @@ def aggregate_h3(
     """Aggregate tree counts + mean score per H3 cell in a radius (viewport zoom-out)."""
     if resolution not in ("h3_r8", "h3_r10"):
         raise ValueError("resolution must be h3_r8 or h3_r10")
+    if _DEMO:
+        from . import demo_repo
+
+        return demo_repo.aggregate_h3(
+            lon=lon, lat=lat, radius_m=radius_m, resolution=resolution
+        )
     sql = f"""
         SELECT {resolution} AS cell, count(*) AS n,
                avg(score) AS mean_score, avg(confidence) AS mean_confidence
@@ -171,6 +192,10 @@ def aggregate_h3(
 
 def insert_report(tree_id: Optional[str], kind: str, payload: dict) -> str:
     """Insert a correction/takedown/label report; returns report_id."""
+    if _DEMO:
+        from . import demo_repo
+
+        return demo_repo.insert_report(tree_id, kind, payload)
     sql = """
         INSERT INTO reports (tree_id, kind, payload)
         VALUES (%s, %s, %s) RETURNING report_id;

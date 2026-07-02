@@ -27,8 +27,8 @@ def test_private_parcel_marks_ineligible_but_keeps_trace():
     res = score_tree(genus="Quercus", dbh_cm=55, tierb=tb)
     assert res.eligible is False
     assert res.provenance["eligible"] is False
-    assert res.provenance["tierB"]["excluded"] is True
-    assert res.provenance["tiers"][0].startswith("B:")  # Tier B recorded first
+    assert res.provenance["eligibility"]["excluded"] is True
+    assert "eligibility" in res.provenance["signals"]
 
 
 def test_hazard_penalty_lowers_score_but_adds_no_positive_signal():
@@ -42,7 +42,7 @@ def test_hazard_penalty_lowers_score_but_adds_no_positive_signal():
     assert pen.eligible is True                # hazard != exclusion
     # Tier B contributes no positive term: penalty is multiplicative <= 1.
     assert pen.score <= base.score
-    entry = next(w for w in pen.why_scored if w["feature"] == "_tierB")
+    entry = next(w for w in pen.why_scored if w["feature"] == "_eligibility")
     assert entry["penalty"] < 1.0
     assert entry["score_after_penalty"] == pen.score
 

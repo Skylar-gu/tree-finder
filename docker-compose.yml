@@ -26,14 +26,13 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-trees}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trees}
       POSTGRES_DB: ${POSTGRES_DB:-trees}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
+      RUN_MIGRATIONS: "1"
+      SEED_SAMPLE: ${SEED_SAMPLE:-1}   # seed the offline sample on first boot
     ports:
       - "8000:8000"
-    # On boot: run migrations, seed the offline sample, then serve.
-    command: >
-      sh -c "python -m db.migrate &&
-             python -m ingest.run_ingest --source portland_parks_trees
-                    --sample data/sample_portland.geojson --to-db &&
-             uvicorn api.main:app --host 0.0.0.0 --port 8000"
+    # start.sh: migrate, optionally seed, then serve via gunicorn/uvicorn workers.
 
 volumes:
   pgdata:

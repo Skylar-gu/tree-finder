@@ -7,8 +7,8 @@ def test_score_has_trace_confidence_provenance():
     assert 0.0 <= r.score <= 1.0
     assert 0.0 <= r.confidence <= 0.75  # hard Tier-A ceiling
     assert any(w["feature"] == "_aggregate" for w in r.why_scored)
-    assert "tiers" in r.provenance
-    assert "A:species_prior" in r.provenance["tiers"]
+    assert "signals" in r.provenance
+    assert "species_prior" in r.provenance["signals"]
     assert "NOT a safety certification" in r.provenance["disclaimer"]
 
 
@@ -25,18 +25,18 @@ def test_estimated_dbh_lowers_confidence():
     assert estimated.confidence < measured.confidence
 
 
-def test_streetcv_dormant_in_v1():
+def test_street_geometry_absent_without_measurement():
     r = score_tree(genus="Quercus", dbh_cm=40)
     agg = [w for w in r.why_scored if w["feature"] == "_aggregate"][0]
     assert agg["weights_used"]["w_streetcv"] == 0.0
-    assert "C:street_cv" not in r.provenance["tiers"]
+    assert "street_geometry" not in r.provenance["signals"]
 
 
-def test_tier_c_seam_activates_weight():
+def test_street_geometry_signal_activates_weight():
     r = score_tree(genus="Quercus", dbh_cm=40, f_streetcv=0.8)
     agg = [w for w in r.why_scored if w["feature"] == "_aggregate"][0]
     assert agg["weights_used"]["w_streetcv"] > 0.0
-    assert "C:street_cv" in r.provenance["tiers"]
+    assert "street_geometry" in r.provenance["signals"]
 
 
 def test_confidence_ceiling_never_certifies():

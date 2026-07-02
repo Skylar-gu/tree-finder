@@ -24,7 +24,7 @@ from .schemas import BodyParams, QueryResponse, ReportIn, TreeOut
 
 DISCLAIMER = (
     "Results are a RANKED, CONFIDENCE-TAGGED candidate list — not a safety "
-    "certification. Branch-ladder geometry is not measured in v1; reach-match is "
+    "certification. Where branch geometry is not measured, reach-match is "
     "a form-based guess. You climb at your own risk under the accepted waiver."
 )
 
@@ -33,19 +33,26 @@ FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
 app = FastAPI(
     title="Climbable-Trees Mapping API",
     version="1.0.0",
-    description="v1 (Tier A): ranked, confidence-tagged candidate trees. Never certifies safety.",
+    description="Tiers A+B serving (C offline): ranked, confidence-tagged candidate trees. Never certifies safety.",
 )
+# CORS: lock down in production via ALLOWED_ORIGINS (comma-separated). Defaults
+# to "*" for local dev only.
+_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
+    allow_origins=_origins,
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "tier": "A", "certifies_safety": False}
+    return {
+        "status": "ok",
+        "service": "climbable-trees",
+        "certifies_safety": False,
+    }
 
 
 @app.get("/api/trees", response_model=QueryResponse)

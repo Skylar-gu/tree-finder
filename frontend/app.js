@@ -1,4 +1,4 @@
-/* Climbable-Trees Mapping — v1 (Tier A) frontend.
+/* Climbable-Trees — candidate finder frontend.
  *
  * MapLibre GL JS. Radius + polygon selection, body-param inputs, per-tree
  * detail panel with confidence badge, why-scored trace, Mapillary attribution
@@ -12,9 +12,12 @@ const API = ""; // same origin
 
 const map = new maplibregl.Map({
   container: "map",
-  style: "https://demotiles.maplibre.org/style.json",
+  // OpenFreeMap: real street/building basemap, free, no API key (self-host for
+  // production traffic — https://openfreemap.org). Replaces the detail-less
+  // MapLibre demo style that rendered as a flat green landmass when zoomed in.
+  style: "https://tiles.openfreemap.org/styles/liberty",
   center: [-122.6765, 45.5231], // Portland sample
-  zoom: 13,
+  zoom: 15,
 });
 map.addControl(new maplibregl.NavigationControl(), "top-left");
 
@@ -78,6 +81,10 @@ map.on("load", () => {
   map.on("click", "trees", onTreeClick);
   map.on("mouseenter", "trees", () => (map.getCanvas().style.cursor = "pointer"));
   map.on("mouseleave", "trees", () => (map.getCanvas().style.cursor = ""));
+
+  // Auto-run a search at the initial map center so candidate trees are visible
+  // immediately (otherwise the map loads empty until the user clicks).
+  search();
 });
 
 function emptyFC() { return { type: "FeatureCollection", features: [] }; }
@@ -184,7 +191,7 @@ function showDetail(t) {
     `<span class="badge">score ${(t.score ?? 0).toFixed(2)}</span>` +
     (t.dbh_cm ? `<span class="badge">DBH ${t.dbh_cm}cm</span>` : "");
 
-  // reach-match (always a form-based guess in v1)
+  // reach-match: a measured ladder when street geometry exists, else a guess
   const rm = t.reach_match || {};
   let reachHtml = "";
   if (rm.is_measured_ladder) {
@@ -193,9 +200,9 @@ function showDetail(t) {
     const p = rm.plausibility == null ? "—" : rm.plausibility.toFixed(2);
     reachHtml =
       `<span class="badge guess">form-based guess</span>` +
-      `<div class="guess-note"><strong>Not a measured ladder.</strong> No per-branch
-       geometry exists in v1. Plausibility that this species at this trunk size
-       offers a low, climbable scaffold: <strong>${p}</strong>.
+      `<div class="guess-note"><strong>Not a measured ladder.</strong> No measured
+       branch geometry for this tree yet. Plausibility that this species at this
+       trunk size offers a low, climbable scaffold: <strong>${p}</strong>.
        Effective d_min for your weight: ${rm.effective_d_min_cm} cm.</div>`;
   }
   if (!$("waiver").checked) {
@@ -213,7 +220,7 @@ function showDetail(t) {
   // provenance
   const p = t.provenance || {};
   $("d-prov").innerHTML =
-    `Tiers: ${(p.tiers || []).join(", ")}<br>` +
+    `Signals: ${(p.signals || []).join(", ")}<br>` +
     `Source: ${p.source_id || "—"}<br>` +
     `License: ${p.license || "—"}<br>` +
     (p.source_url ? `<a href="${p.source_url}" target="_blank" rel="noopener">source</a><br>` : "") +

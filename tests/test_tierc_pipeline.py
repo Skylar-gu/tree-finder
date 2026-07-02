@@ -96,8 +96,8 @@ def test_tierc_f_streetcv_flows_into_score_and_activates_w_c():
     f = streetcv_feature(out)
     base = score_tree(genus="Quercus", dbh_cm=55)
     withc = score_tree(genus="Quercus", dbh_cm=55, f_streetcv=f)
-    # Tier C tier recorded in provenance and the dormant weight is now active.
-    assert "C:street_cv" in withc.provenance["tiers"]
+    # Street-geometry signal recorded in provenance and its weight now active.
+    assert "street_geometry" in withc.provenance["signals"]
     agg = next(w for w in withc.why_scored if w["feature"] == "_aggregate")
     assert agg["weights_used"]["w_streetcv"] > 0
-    assert "C:street_cv" not in base.provenance["tiers"]
+    assert "street_geometry" not in base.provenance["signals"]

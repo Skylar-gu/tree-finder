@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Climbable-Trees Mapping — v1 (Tier A)</title>
+  <title>Climbable-Trees — candidate finder</title>
   <link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet" />
   <link href="/static/style.css" rel="stylesheet" />
 </head>
 <body>
   <div id="sidebar">
     <header>
-      <h1>Climbable-Trees <span class="tier">Tier A · v1</span></h1>
+      <h1>Climbable-Trees <span class="tier">candidate finder</span></h1>
       <p class="tagline">A ranked, confidence-tagged candidate list. This tool
         <strong>filters and ranks</strong> — it never certifies that a tree is
         safe to climb.</p>
@@ -34,8 +34,8 @@
       <label class="check"><input id="public_only" type="checkbox" checked /> Public / eligible trees only</label>
       <label>Min score <input id="min_score" type="range" min="0" max="1" step="0.05" value="0" /> <span id="min_score_val">0</span></label>
       <button id="search-here">Search this map center</button>
-      <p class="hint">Click the map to drop a search point, or draw a polygon
-        with the ▱ tool, then Search.</p>
+      <p class="hint">Candidates load automatically at the map center. Click the
+        map to search elsewhere, or draw a polygon with the ▱ tool, then Search.</p>
     </section>
 
     <section class="panel" id="waiver-panel">
@@ -81,13 +81,14 @@
       <div id="d-prov"></div>
     </div>
 
-    <!-- Mapillary photo slot WITH required attribution scaffolding (Tier C not
-         wired in v1; the slot + attribution must exist regardless — invariant #5). -->
+    <!-- Mapillary photo slot WITH required attribution scaffolding. Populated by
+         the offline street-geometry enrichment when imagery exists; the slot +
+         CC-BY-SA attribution must exist regardless (licensing is load-bearing). -->
     <div class="detail-block" id="d-photo-block">
       <h3>Ground photo</h3>
       <div id="d-photo" class="photo-slot">
-        <div class="photo-placeholder">Street-level imagery is a Tier C feature
-          (not wired in v1).</div>
+        <div class="photo-placeholder">Street-level imagery appears here when the
+          offline geometry enrichment has processed this tree.</div>
       </div>
       <div class="attribution" id="d-attribution">
         Imagery © contributors ·

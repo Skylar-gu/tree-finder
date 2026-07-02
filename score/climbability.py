@@ -5,12 +5,12 @@
 Design commitments (invariants #1, #2, and "no black box"):
   - It is a confidence-weighted sum of interpretable features, never an opaque
     model. Weights are module constants you can read and tune.
-  - In Tier-A-only v1, w_sp and w_db dominate; the Tier C street-CV term is
-    DORMANT (f_streetcv is always None, its weight is redistributed).
+  - Species + trunk size dominate; the street-geometry term contributes only
+    when a measured value is supplied (else its weight is redistributed).
   - Missing features do not silently become zero: weights are renormalised over
     the features we actually have, and their absence LOWERS ``confidence``.
   - Every score carries a machine-readable ``why_scored`` trace, a ``confidence``
-    in [0,1], and a ``provenance`` block naming the contributing evidence tiers.
+    in [0,1], and a ``provenance`` block naming the contributing ``signals``.
 
 The score RANKS candidates. It never certifies safety (invariant #1).
 """
@@ -133,7 +133,7 @@ def score_tree(
             "value": f_species,
             "matched_on": prior.matched_on,
             "matched_key": prior.matched_key,
-            "tiers": prior.tiers,
+            "sources": prior.tiers,
             # numeric scaffold_form is retained so the API can run the reach-match
             # degradation path server-side without recomputing features.
             "scaffold_form": prior.scaffold_form,
@@ -162,12 +162,15 @@ def score_tree(
         }
     )
 
-    # --- f_streetcv (Tier C, dormant) ----------------------------------------
+    # --- f_streetcv (street-level geometry signal; present only when measured) -
     why.append(
         {
-            "feature": "streetcv",
+            "feature": "street_geometry",
             "value": f_streetcv,
-            "note": "Tier C branch-geometry signal — DORMANT in v1 (no imagery pipeline)",
+            "note": (
+                "street-level branch-geometry signal — contributes only when a "
+                "measured value is supplied (else omitted, not zeroed)"
+            ),
         }
     )
 
@@ -204,22 +207,28 @@ def score_tree(
         prior.is_known, prior.matched_on, dbh, captured_at_fresh
     )
 
-    tiers = ["A:species_prior", "A:dbh"]
+    # Flat list of the signals that actually contributed to this assessment.
+    signals = ["species_prior", "trunk_size"]
     if f_streetcv is not None:
-        tiers.append("C:street_cv")
+        signals.append("street_geometry")
 
-    # --- Tier B: eligibility gate + hazard penalty (never positive score) -----
+    # --- Eligibility gate + hazard penalty (never adds positive score) --------
     eligible = True
-    tierb_prov: Optional[dict] = None
+    eligibility_prov: Optional[dict] = None
     if tierb is not None:
-        tiers = tierb.tiers + tiers
+        eligibility_prov = tierb.to_dict()
+        if tierb.detected:
+            signals.insert(0, "aerial_detection")
+        signals.append("eligibility")
+        if tierb.hazards:
+            signals.append("hazard")
         eligible = not tierb.excluded
         pre_penalty = score
         if score is not None and tierb.penalty != 1.0:
             score = round(score * tierb.penalty, 4)
         why.append(
             {
-                "feature": "_tierB",
+                "feature": "_eligibility",
                 "eligible": eligible,
                 "public_flag": tierb.public_flag,
                 "penalty": tierb.penalty,
@@ -227,24 +236,23 @@ def score_tree(
                 "score_after_penalty": score,
                 "hazards": [h.__dict__ for h in tierb.hazards],
                 "note": (
-                    "Tier B is an eligibility GATE + hazard PENALTY only — it "
-                    "adds no climbability signal (spec §4)."
+                    "eligibility gate (private parcel excluded) + hazard proximity "
+                    "penalty — never adds positive climbability signal"
                 ),
             }
         )
-        tierb_prov = tierb.to_dict()
 
     provenance = {
-        "tiers": tiers,
+        "signals": signals,
         "source_id": source_id,
         "source_url": source_url,
         "license": license_,
         "captured_at_fresh": captured_at_fresh,
         "eligible": eligible,
-        "tierB": tierb_prov,
+        "eligibility": eligibility_prov,
         "disclaimer": (
-            "Ranked candidate only. NOT a safety certification. Branch-ladder "
-            "geometry is not measured in v1 — see reach-match form-based guess."
+            "Ranked candidate only. NOT a safety certification. Where no measured "
+            "branch geometry is available, reach-match is a form-based guess."
         ),
     }
 
