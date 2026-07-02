@@ -18,9 +18,12 @@ The score RANKS candidates. It never certifies safety (invariant #1).
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from features.dbh_feature import DbhFeature, dbh_size_feature
+
+if TYPE_CHECKING:  # avoid a hard import; Tier B is an optional pipeline stage
+    from tierB.parcels import EligibilityResult
 from features.species_prior import (
     SpeciesPrior,
     lookup_species_prior,
@@ -39,6 +42,7 @@ W_STREETCV = 0.10  # Tier C — DORMANT in v1 (f_streetcv is always None).
 class ScoreResult:
     score: Optional[float]           # S in [0,1], or None if no signal at all
     confidence: float                # [0,1] — how much to trust `score`
+    eligible: bool = True            # Tier B gate: False -> not served (private)
     why_scored: list[dict] = field(default_factory=list)  # machine-readable trace
     provenance: dict = field(default_factory=dict)         # tiers + source + license
     features: dict = field(default_factory=dict)
@@ -47,6 +51,7 @@ class ScoreResult:
         return {
             "score": self.score,
             "confidence": self.confidence,
+            "eligible": self.eligible,
             "why_scored": self.why_scored,
             "provenance": self.provenance,
             "features": self.features,
@@ -105,12 +110,17 @@ def score_tree(
     source_url: Optional[str] = None,
     license_: Optional[str] = None,
     f_streetcv: Optional[float] = None,  # Tier C — stays None in v1
+    tierb: Optional["EligibilityResult"] = None,  # Tier B gate + hazard penalty
 ) -> ScoreResult:
     """Score one tree from Tier-A fields. Pure function, no I/O.
 
     Returns a ScoreResult with a full why_scored trace. Passing ``f_streetcv``
     is the ONLY seam the (future) Tier C pipeline needs — everything else already
     supports it.
+
+    ``tierb`` is the Tier B reconciliation (spec §4.2). It NEVER adds positive
+    score: it only gates (private parcel -> ``eligible=False``) and applies a
+    multiplicative hazard penalty (power line / road / waterway proximity).
     """
     why: list[dict] = []
 
@@ -198,12 +208,40 @@ def score_tree(
     if f_streetcv is not None:
         tiers.append("C:street_cv")
 
+    # --- Tier B: eligibility gate + hazard penalty (never positive score) -----
+    eligible = True
+    tierb_prov: Optional[dict] = None
+    if tierb is not None:
+        tiers = tierb.tiers + tiers
+        eligible = not tierb.excluded
+        pre_penalty = score
+        if score is not None and tierb.penalty != 1.0:
+            score = round(score * tierb.penalty, 4)
+        why.append(
+            {
+                "feature": "_tierB",
+                "eligible": eligible,
+                "public_flag": tierb.public_flag,
+                "penalty": tierb.penalty,
+                "score_before_penalty": pre_penalty,
+                "score_after_penalty": score,
+                "hazards": [h.__dict__ for h in tierb.hazards],
+                "note": (
+                    "Tier B is an eligibility GATE + hazard PENALTY only — it "
+                    "adds no climbability signal (spec §4)."
+                ),
+            }
+        )
+        tierb_prov = tierb.to_dict()
+
     provenance = {
         "tiers": tiers,
         "source_id": source_id,
         "source_url": source_url,
         "license": license_,
         "captured_at_fresh": captured_at_fresh,
+        "eligible": eligible,
+        "tierB": tierb_prov,
         "disclaimer": (
             "Ranked candidate only. NOT a safety certification. Branch-ladder "
             "geometry is not measured in v1 — see reach-match form-based guess."
@@ -213,6 +251,7 @@ def score_tree(
     return ScoreResult(
         score=score,
         confidence=confidence,
+        eligible=eligible,
         why_scored=why,
         provenance=provenance,
         features={

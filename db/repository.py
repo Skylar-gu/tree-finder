@@ -48,13 +48,15 @@ def upsert_trees(rows: list[dict]) -> int:
         INSERT INTO trees (
             geom, source_id, source_ref, scientific, genus, species, common,
             dbh_cm, height_m, crown_m, health, maturity, public_flag,
-            captured_at, score, confidence, why_scored, provenance, h3_r8, h3_r10
+            captured_at, score, confidence, why_scored, provenance, h3_r8, h3_r10,
+            detected, eligible, hazards, tierb_penalty
         ) VALUES (
             ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326),
             %(source_id)s, %(source_ref)s, %(scientific)s, %(genus)s, %(species)s,
             %(common)s, %(dbh_cm)s, %(height_m)s, %(crown_m)s, %(health)s,
             %(maturity)s, %(public_flag)s, %(captured_at)s, %(score)s,
-            %(confidence)s, %(why_scored)s, %(provenance)s, %(h3_r8)s, %(h3_r10)s
+            %(confidence)s, %(why_scored)s, %(provenance)s, %(h3_r8)s, %(h3_r10)s,
+            %(detected)s, %(eligible)s, %(hazards)s, %(tierb_penalty)s
         )
         ON CONFLICT (source_id, source_ref) WHERE source_ref IS NOT NULL
         DO UPDATE SET
@@ -67,6 +69,8 @@ def upsert_trees(rows: list[dict]) -> int:
             score = EXCLUDED.score, confidence = EXCLUDED.confidence,
             why_scored = EXCLUDED.why_scored, provenance = EXCLUDED.provenance,
             h3_r8 = EXCLUDED.h3_r8, h3_r10 = EXCLUDED.h3_r10,
+            detected = EXCLUDED.detected, eligible = EXCLUDED.eligible,
+            hazards = EXCLUDED.hazards, tierb_penalty = EXCLUDED.tierb_penalty,
             ingested_at = now();
     """
     n = 0
@@ -78,6 +82,11 @@ def upsert_trees(rows: list[dict]) -> int:
                 params["provenance"] = json.dumps(r.get("provenance"))
                 params["h3_r8"] = _h3(r["lat"], r["lon"], 8)
                 params["h3_r10"] = _h3(r["lat"], r["lon"], 10)
+                # Tier B columns: default to v1 semantics when absent.
+                params["detected"] = bool(r.get("detected", False))
+                params["eligible"] = bool(r.get("eligible", True))
+                params["hazards"] = json.dumps(r.get("hazards")) if r.get("hazards") is not None else None
+                params["tierb_penalty"] = r.get("tierb_penalty")
                 cur.execute(sql, params)
                 n += 1
         conn.commit()
@@ -100,13 +109,17 @@ def query_trees(
     """
     where = ["ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint(%(lon)s,%(lat)s),4326)::geography, %(radius)s)"]
     if public_only:
+        # Invariant #3: serve only public AND Tier-B-eligible trees (private
+        # parcels reconciled by Tier B set eligible=false).
         where.append("public_flag = true")
+        where.append("eligible = true")
     where.append("COALESCE(score, 0) >= %(min_score)s")
     sql = f"""
         SELECT tree_id, ST_X(geom) AS lon, ST_Y(geom) AS lat,
                source_id, source_ref, scientific, genus, species, common,
                dbh_cm, height_m, crown_m, health, maturity, public_flag,
                captured_at, score, confidence, why_scored, provenance,
+               detected, eligible, hazards, tierb_penalty,
                ST_Distance(geom::geography,
                            ST_SetSRID(ST_MakePoint(%(lon)s,%(lat)s),4326)::geography) AS dist_m
         FROM trees

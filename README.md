@@ -9,9 +9,41 @@ ladder of sufficiently-thick branches.
 
 This repository is the **v1 / Tier A** release: OpenTrees-style ingestion →
 species prior + DBH size → **form-based** reach-match → PostGIS → MapLibre.
-Zero novel ML, zero legal risk. Tiers B (aerial CV + hazard gates), C (street
-imagery branch geometry) and Premium (phone-LiDAR → QSM) are **intentionally
-deferred** — clean module seams are left for them (see "Module seams" below).
+Zero novel ML, zero legal risk. **Tier B (aerial detection + eligibility/hazard
+reconciliation) is now implemented** (see below); Tier C (street-imagery branch
+geometry) and Premium (phone-LiDAR → QSM) remain **intentionally deferred** —
+clean module seams are left for them (see "Module seams" below).
+
+---
+
+## Tier B — aerial detection + eligibility/hazard reconciliation (`tierB/`)
+
+Tier B's purpose is **narrow and explicitly NOT climbability** (spec §4): aerial
+detectors see the canopy from above and recover neither trunk nor branch
+structure. It contributes **eligibility gates and score penalties only**:
+
+| Piece | Module | What it does |
+|---|---|---|
+| Crown detection | `tierB/detect.py` | Finds trees where **no inventory exists**. `DeepForest` backend (torchvision RetinaNet, MIT) is lazily imported behind the optional `requirements-tierb.txt` extra; a dependency-free `GridStubDetector` drives tests/demos. |
+| Orthophoto tiling | `tierB/tiling.py` | Windowing + **cross-seam NMS** + stitching — the real CPU/IO cost (spec §4.2). Pure, no imagery/torch needed. |
+| Georeferencing | `tierB/detect.py` | Rasterio-order affine geotransform maps detection pixels → lon/lat crowns. |
+| Reconciliation | `tierB/parcels.py` | OSM land-use containment → `public_flag` gate (**private parcel ⇒ excluded**, invariant #3); hazard proximity to `power=line` / `highway` / `waterway` → graded **multiplicative penalties**. Overpass or offline GeoJSON. |
+| Scoring hook | `score/climbability.py` | New optional `tierb=` arg: gates (`eligible`) + applies the hazard penalty. **Never adds a positive term.** Absent ⇒ v1 behaviour is byte-for-byte unchanged. |
+| Storage/serving | `db/migrations/002_tierb.sql`, `db/repository.py` | Adds `detected`, `eligible`, `hazards`, `tierb_penalty`; the API serves only `public_flag AND eligible` trees. |
+
+Run the offline reconciliation demo (no network, no torch):
+
+```bash
+python -m tierB.run_reconcile \
+    --trees data/sample_portland.geojson \
+    --osm   data/sample_portland_osm.geojson
+# -> Silver Maple EXCLUDED (private parcel); Douglas Fir penalised ×0.25 (power line)
+```
+
+Aerial detection over real imagery needs the extra + a source orthophoto (e.g.
+NAIP): `pip install -r requirements-tierb.txt`, then drive
+`tierB.detect.detect_orthophoto(...)`. **Detectree2** (better F1, needs
+Detectron2) is documented but not wired — add it in a dedicated env.
 
 ---
 

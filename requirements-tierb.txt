@@ -1,0 +1,17 @@
+# Tier B optional extras (spec §4). Heavy / env-sensitive — install only when
+# running aerial detection. The core package and its tests never import these.
+#
+# Verify current install instructions AND licenses from each repo at build time
+# (spec §12): several are research code with non-permissive or ambiguous terms.
+
+# Default aerial crown detector — torchvision RetinaNet bounding boxes (MIT).
+deepforest==1.4.1            # pulls torch/torchvision transitively
+
+# Orthophoto IO / windowed reads for tiling.
+rasterio==1.3.10
+
+# Optional geometry acceleration (parcels/hazards run fine without it).
+shapely==2.0.4
+
+# NOTE: Detectree2 (Mask R-CNN, better F1) needs Detectron2 with a pinned
+# torch/CUDA combo and is intentionally NOT listed here — add in a dedicated env.

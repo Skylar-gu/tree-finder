@@ -1,0 +1,45 @@
+{
+  "type": "FeatureCollection",
+  "note": "Offline Tier B demo geometry overlapping data/sample_portland.geojson. Not real OSM data; for demonstration and tests only.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"leisure": "park", "name": "Demo Public Park"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-122.6772, 45.5227],
+          [-122.6759, 45.5227],
+          [-122.6759, 45.5234],
+          [-122.6772, 45.5234],
+          [-122.6772, 45.5227]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"landuse": "residential", "name": "Demo Residential Block"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-122.6776, 45.5233],
+          [-122.6765, 45.5233],
+          [-122.6765, 45.5239],
+          [-122.6776, 45.5239],
+          [-122.6776, 45.5233]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"power": "line", "name": "Demo Transmission Line"},
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-122.67794, 45.5238],
+          [-122.67794, 45.5242]
+        ]
+      }
+    }
+  ]
+}
