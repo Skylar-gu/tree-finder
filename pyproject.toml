@@ -1,0 +1,13 @@
+[project]
+name = "tree-finder"
+version = "1.0.0"
+description = "Climbable-Trees Mapping — v1 (Tier A): ranked, confidence-tagged candidate trees."
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.setuptools]
+packages = ["ingest", "features", "score", "db", "api"]

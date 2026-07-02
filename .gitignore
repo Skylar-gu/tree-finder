@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+data/*.zip
+data/*.csv
+data/trees.json
+!data/.gitkeep
+!data/sample_portland.geojson

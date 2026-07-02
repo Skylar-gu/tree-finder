@@ -1,0 +1,104 @@
+# Declarative source registry + crosswalk config (spec §2).
+#
+# Ported in spirit from stevage/opentrees-data (MIT) sources/*.js — one entry
+# per municipal inventory, naming its portal, download/query URL, license, and
+# a field crosswalk to our normalised schema. Add sources by appending here; no
+# code change needed. `units` declares imperial columns for conversion
+# (dbh inches->cm, height feet->m).
+#
+# path:
+#   batch — download a full CSV/GeoJSON/zip snapshot (Path 1)
+#   live  — page a live portal query so captured_at is fresh (Path 2)
+#
+# portal: socrata | arcgis | ckan | geojson
+
+sources:
+  # ------------------------------------------------------------------ NYC (live)
+  - source_id: nyc_street_trees_2015
+    name: "NYC Street Tree Census (2015)"
+    country: US
+    city: New York
+    portal: socrata
+    path: live
+    # Socrata SoQL endpoint; paged via $limit/$offset in the fetcher.
+    url: "https://data.cityofnewyork.us/resource/uvpi-gqnh.json"
+    license: "NYC Open Data — public domain"
+    public_default: true          # municipal street trees -> public/eligible
+    # Only ingest living, standing trees (drops stumps/dead at the portal).
+    where: "status = 'Alive'"
+    captured_at_field: null        # census year is fixed; fetcher stamps today
+    crosswalk:
+      scientific: spc_latin
+      common: spc_common
+      dbh: tree_dbh                # inches
+      health: health
+      lon: longitude
+      lat: latitude
+      ref: tree_id
+    units:
+      dbh: in
+
+  # ----------------------------------------------------------- San Francisco
+  - source_id: sf_street_trees
+    name: "San Francisco Street Tree List (DataSF)"
+    country: US
+    city: San Francisco
+    portal: socrata
+    path: live
+    url: "https://data.sfgov.org/resource/tkzw-k3nq.json"
+    license: "DataSF — public domain"
+    public_default: true
+    crosswalk:
+      scientific: qspecies         # "Genus species :: Common name"
+      dbh: dbh                     # inches
+      lon: longitude
+      lat: latitude
+      ref: treeid
+    units:
+      dbh: in
+
+  # ---------------------------------------------------------- Portland (ArcGIS)
+  - source_id: portland_parks_trees
+    name: "Portland Parks Trees (ArcGIS Feature Service)"
+    country: US
+    city: Portland
+    portal: arcgis
+    path: live
+    # ArcGIS Feature Service layer; fetcher appends /query?where=...&f=geojson.
+    url: "https://services.arcgis.com/quVN97tn06YNGj9s/arcgis/rest/services/Parks_Tree_Inventory/FeatureServer/0"
+    license: "City of Portland — open data"
+    public_default: true
+    where: "1=1"
+    crosswalk:
+      scientific: Genus_species
+      common: Common
+      dbh: DBH                     # inches
+      height: HEIGHT               # feet
+      genus: Genus
+      species: Species
+      ref: OBJECTID
+    units:
+      dbh: in
+      height: ft
+
+  # ---------------------------------------------- Melbourne (batch example)
+  # Config-only example of a metric CKAN/GeoJSON source (already in cm/m).
+  - source_id: melbourne_urban_forest
+    name: "City of Melbourne Urban Forest"
+    country: AU
+    city: Melbourne
+    portal: socrata
+    path: live
+    url: "https://data.melbourne.vic.gov.au/resource/fp38-wiyy.json"
+    license: "City of Melbourne — CC BY 4.0"
+    public_default: true
+    crosswalk:
+      common: common_name
+      scientific: scientific_name
+      dbh: diameter_breast_height  # cm already
+      genus: genus
+      lon: longitude
+      lat: latitude
+      ref: com_id
+    units:
+      dbh: cm

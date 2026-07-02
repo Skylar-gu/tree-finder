@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-122.6765, 45.5231]},
+      "properties": {"OBJECTID": 1, "Genus_species": "Quercus rubra", "Common": "Northern Red Oak", "Genus": "Quercus", "Species": "rubra", "DBH": 28.0, "HEIGHT": 55.0}
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-122.6770, 45.5235]},
+      "properties": {"OBJECTID": 2, "Genus_species": "Acer saccharinum", "Common": "Silver Maple", "Genus": "Acer", "Species": "saccharinum", "DBH": 18.0, "HEIGHT": 60.0}
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-122.6780, 45.5240]},
+      "properties": {"OBJECTID": 3, "Genus_species": "Pseudotsuga menziesii", "Common": "Douglas Fir", "Genus": "Pseudotsuga", "Species": "menziesii", "DBH": 34.0, "HEIGHT": 90.0}
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-122.6790, 45.5245]},
+      "properties": {"OBJECTID": 4, "Genus_species": "STUMP", "Common": "Stump", "Genus": "", "Species": "", "DBH": 0, "HEIGHT": 0}
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-122.6795, 45.5248]},
+      "properties": {"OBJECTID": 5, "Genus_species": "Zelkova serrata", "Common": "Japanese Zelkova", "Genus": "Zelkova", "Species": "serrata", "DBH": null, "HEIGHT": 40.0}
+    }
+  ]
+}
