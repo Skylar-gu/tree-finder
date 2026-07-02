@@ -64,14 +64,26 @@ export WEB_CONCURRENCY=4
 ./start.sh          # migrate + serve under gunicorn/uvicorn workers
 ```
 
-### Look without a database (demo mode)
+### Look without a database — real data (live mode)
+
+```bash
+LIVE_MODE=1 uvicorn api.main:app --port 8000
+```
+
+Fetches **real municipal tree-inventory data** on demand from open-data portals
+for **10 US cities** (Austin, Bloomington, Buffalo, Cambridge, Denver, Honolulu,
+Mesa, New York, Norfolk, San Francisco) and caches per city in memory. Pick a
+city from the selector; pan + Search to explore. No database or API key needed.
+For production, ingest the same sources into PostGIS (§3) — the serving code path
+is identical.
+
+### Look without a database — offline sample (demo mode)
 
 ```bash
 DEMO_MODE=1 uvicorn api.main:app --port 8000
 ```
 
-Serves the bundled sample from memory (no PostGIS). For local inspection only —
-not a deployment target.
+Serves the tiny bundled offline sample from memory (no network). Inspection only.
 
 ## 5. Production notes
 

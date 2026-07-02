@@ -55,6 +55,14 @@ def health():
     }
 
 
+@app.get("/api/cities")
+def get_cities():
+    """Configured cities (with map centers) for the selector."""
+    from db.live_repo import cities
+
+    return {"cities": cities()}
+
+
 @app.get("/api/trees", response_model=QueryResponse)
 def get_trees(
     lon: float = Query(..., ge=-180, le=180),

@@ -16,7 +16,7 @@ const map = new maplibregl.Map({
   // production traffic — https://openfreemap.org). Replaces the detail-less
   // MapLibre demo style that rendered as a flat green landmass when zoomed in.
   style: "https://tiles.openfreemap.org/styles/liberty",
-  center: [-122.6765, 45.5231], // Portland sample
+  center: [-122.4194, 37.7749], // San Francisco (dense real data on load)
   zoom: 15,
 });
 map.addControl(new maplibregl.NavigationControl(), "top-left");
@@ -248,6 +248,32 @@ async function submitReport(t) {
     $("d-report-status").textContent = "Failed: " + e.message;
   }
 }
+
+// ---- city selector ------------------------------------------------------------
+async function loadCities() {
+  try {
+    const resp = await fetch(`${API}/api/cities`);
+    const data = await resp.json();
+    const sel = $("city");
+    for (const c of data.cities) {
+      const opt = document.createElement("option");
+      opt.value = JSON.stringify(c.center);
+      opt.textContent = c.city;
+      sel.appendChild(opt);
+    }
+  } catch (e) { /* selector stays empty; map still works */ }
+}
+$("city").onchange = (e) => {
+  if (!e.target.value) return;
+  const center = JSON.parse(e.target.value);
+  searchPoint = center;
+  if (searchMarker) searchMarker.remove();
+  searchMarker = new maplibregl.Marker({ color: "#4ea36b" }).setLngLat(center).addTo(map);
+  map.flyTo({ center, zoom: 15 });
+  drawRadius();
+  map.once("moveend", search);
+};
+loadCities();
 
 // ---- controls -----------------------------------------------------------------
 $("search-here").onclick = search;

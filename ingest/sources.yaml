@@ -18,6 +18,7 @@ sources:
     name: "NYC Street Tree Census (2015)"
     country: US
     city: New York
+    center: [-73.9857, 40.7484]    # [lon, lat] — city selector focus
     portal: socrata
     path: live
     # Socrata SoQL endpoint; paged via $limit/$offset in the fetcher.
@@ -43,6 +44,7 @@ sources:
     name: "San Francisco Street Tree List (DataSF)"
     country: US
     city: San Francisco
+    center: [-122.4194, 37.7749]
     portal: socrata
     path: live
     url: "https://data.sfgov.org/resource/tkzw-k3nq.json"
@@ -57,18 +59,19 @@ sources:
     units:
       dbh: in
 
-  # ---------------------------------------------------------- Portland (ArcGIS)
+  # ---------------------------------------------------- Portland (offline sample)
+  # NOTE: kept only for the offline demo sample (data/sample_portland.geojson).
+  # It has no `center`, so it does NOT appear in the live city selector — the
+  # public ArcGIS endpoint that once backed it is no longer reachable.
   - source_id: portland_parks_trees
-    name: "Portland Parks Trees (ArcGIS Feature Service)"
+    name: "Portland Parks Trees (offline sample)"
     country: US
     city: Portland
-    portal: arcgis
-    path: live
-    # ArcGIS Feature Service layer; fetcher appends /query?where=...&f=geojson.
-    url: "https://services.arcgis.com/quVN97tn06YNGj9s/arcgis/rest/services/Parks_Tree_Inventory/FeatureServer/0"
+    portal: geojson
+    path: batch
+    url: "data/sample_portland.geojson"
     license: "City of Portland — open data"
     public_default: true
-    where: "1=1"
     crosswalk:
       scientific: Genus_species
       common: Common
@@ -80,6 +83,28 @@ sources:
     units:
       dbh: in
       height: ft
+
+  # ------------------------------------------------------------------ Honolulu
+  - source_id: honolulu_exceptional_trees
+    name: "Honolulu Exceptional Trees (Oahu)"
+    country: US
+    city: Honolulu
+    center: [-157.8583, 21.3069]
+    portal: socrata
+    path: live
+    url: "https://data.honolulu.gov/resource/84fd-3fzf.json"
+    license: "City & County of Honolulu — public domain"
+    public_default: true
+    crosswalk:
+      scientific: scientific_name
+      common: common_name
+      dbh: diameter_in_           # inches
+      health: tree_condition
+      lon: longitude
+      lat: latitude
+      ref: object_id
+    units:
+      dbh: in
 
   # ---------------------------------------------- Melbourne (batch example)
   # Config-only example of a metric CKAN/GeoJSON source (already in cm/m).
@@ -102,3 +127,144 @@ sources:
       ref: com_id
     units:
       dbh: cm
+
+  # ------------------------------------------------------------------- Denver
+  - source_id: denver_tree_inventory
+    name: "Denver Tree Inventory"
+    country: US
+    city: Denver
+    center: [-104.9903, 39.7392]
+    portal: socrata
+    path: live
+    url: "https://data.colorado.gov/resource/wz8h-dap6.json"
+    license: "Denver Open Data — public domain"
+    public_default: true
+    geo_field: the_geom
+    crosswalk:
+      scientific: species_botanic
+      common: species_common
+      dbh: diameter               # inches
+      ref: ":id"
+    units:
+      dbh: in
+
+  # -------------------------------------------------------------------- Austin
+  - source_id: austin_tree_inventory
+    name: "Austin Tree Inventory"
+    country: US
+    city: Austin
+    center: [-97.7431, 30.2672]
+    portal: socrata
+    path: live
+    url: "https://datahub.austintexas.gov/resource/wrik-xasw.json"
+    license: "City of Austin — public domain"
+    public_default: true
+    crosswalk:
+      scientific: species
+      dbh: diameter               # inches
+      lon: longitude
+      lat: latitude
+      ref: ":id"
+    units:
+      dbh: in
+
+  # ----------------------------------------------------------------- Cambridge
+  - source_id: cambridge_street_trees
+    name: "Cambridge MA Street Trees"
+    country: US
+    city: Cambridge
+    center: [-71.1097, 42.3736]
+    portal: socrata
+    path: live
+    url: "https://data.cambridgema.gov/resource/82zb-7qc9.json"
+    license: "Cambridge Open Data — public domain"
+    public_default: true
+    geo_field: the_geom
+    crosswalk:
+      scientific: scientific
+      common: commonname
+      dbh: diameter               # inches
+      ref: ":id"
+    units:
+      dbh: in
+
+  # -------------------------------------------------------------------- Buffalo
+  - source_id: buffalo_tree_inventory
+    name: "Buffalo Tree Inventory"
+    country: US
+    city: Buffalo
+    center: [-78.8784, 42.8864]
+    portal: socrata
+    path: live
+    url: "https://data.buffalony.gov/resource/n4ni-uuec.json"
+    license: "Buffalo OpenData — public domain"
+    public_default: true
+    crosswalk:
+      scientific: botanical_name
+      common: common_name
+      dbh: dbh                    # inches
+      lon: longitude
+      lat: latitude
+      ref: ":id"
+    units:
+      dbh: in
+
+  # ---------------------------------------------------------------------- Mesa
+  - source_id: mesa_tree_inventory
+    name: "Mesa AZ Tree Inventory"
+    country: US
+    city: Mesa
+    center: [-111.8315, 33.4152]
+    portal: socrata
+    path: live
+    url: "https://citydata.mesaaz.gov/resource/jcys-68y7.json"
+    license: "City of Mesa — public domain"
+    public_default: true
+    crosswalk:
+      scientific: botanical_name
+      common: common_name
+      dbh: tree_dbh               # inches
+      lon: longitude
+      lat: latitude
+      ref: ":id"
+    units:
+      dbh: in
+
+  # ------------------------------------------------------------------- Norfolk
+  - source_id: norfolk_tree_inventory
+    name: "Norfolk VA City Tree Inventory"
+    country: US
+    city: Norfolk
+    center: [-76.2859, 36.8508]
+    portal: socrata
+    path: live
+    url: "https://data.norfolk.gov/resource/cmvv-agyb.json"
+    license: "City of Norfolk — public domain"
+    public_default: true
+    crosswalk:
+      common: common_name
+      dbh: trunk_diameter         # inches
+      lon: longitude
+      lat: latitude
+      ref: ":id"
+    units:
+      dbh: in
+
+  # --------------------------------------------------------------- Bloomington
+  - source_id: bloomington_trees
+    name: "Bloomington IN TreeKeeper Inventory"
+    country: US
+    city: Bloomington
+    center: [-86.5264, 39.1653]
+    portal: socrata
+    path: live
+    url: "https://data.bloomington.in.gov/resource/ndfd-h5qf.json"
+    license: "City of Bloomington — public domain"
+    public_default: true
+    geo_field: the_geom
+    crosswalk:
+      common: species_common
+      dbh: dbh                    # inches
+      ref: ":id"
+    units:
+      dbh: in
