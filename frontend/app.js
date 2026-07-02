@@ -229,13 +229,35 @@ function showDetail(t) {
   $("d-report-send").onclick = () => submitReport(t);
   $("d-report-status").textContent = "";
 
-  loadSpeciesPhoto(t);
+  loadTreePhoto(t);
+}
+
+// ---- tree photo: real Street View of the spot, else species reference ---------
+async function loadTreePhoto(t) {
+  const slot = $("d-photo");
+  slot.innerHTML = `<div class="photo-placeholder">Loading photo…</div>`;
+  // 1) Try a photo of the ACTUAL location (Google Street View).
+  try {
+    const q = new URLSearchParams({ lat: t.lat, lon: t.lon });
+    const info = await (await fetch(`${API}/api/tree_photo?${q}`)).json();
+    if (info && info.available) {
+      const iq = new URLSearchParams({ lat: t.lat, lon: t.lon });
+      if (info.heading != null) iq.set("heading", info.heading);
+      slot.innerHTML =
+        `<img class="species-photo" src="${API}/api/tree_photo/image?${iq}" alt="street view of this tree" loading="lazy" />` +
+        `<div class="photo-credit">Street view at this location` +
+        (info.date ? ` (${info.date})` : "") +
+        `<br>${info.attribution || ""}</div>`;
+      return;
+    }
+  } catch (e) { /* fall through to species photo */ }
+  // 2) Fall back to a species reference photo (Wikipedia).
+  await loadSpeciesPhoto(t);
 }
 
 // ---- species reference photo (Wikipedia) --------------------------------------
 async function loadSpeciesPhoto(t) {
   const slot = $("d-photo");
-  slot.innerHTML = `<div class="photo-placeholder">Loading photo…</div>`;
   try {
     const q = new URLSearchParams({
       scientific: t.scientific || "",

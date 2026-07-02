@@ -55,6 +55,39 @@ def health():
     }
 
 
+@app.get("/api/tree_photo")
+def tree_photo(
+    lat: float = Query(..., ge=-90, le=90),
+    lon: float = Query(..., ge=-180, le=180),
+):
+    """Whether a street-level photo of THIS tree's location exists (Google
+    Street View), and which heading faces it. Image bytes come from
+    /api/tree_photo/image (key stays server-side)."""
+    from .photos import tree_photo_info
+
+    return tree_photo_info(lat, lon)
+
+
+@app.get("/api/tree_photo/image")
+def tree_photo_image(
+    lat: float = Query(..., ge=-90, le=90),
+    lon: float = Query(..., ge=-180, le=180),
+    heading: float = Query(None),
+):
+    """Proxy the Street View JPEG for a location so the API key never leaves the
+    server. 404 when no key or no imagery."""
+    from fastapi import Response
+
+    from .photos import streetview_image
+
+    got = streetview_image(lat, lon, heading=heading)
+    if got is None:
+        raise HTTPException(404, "no street-level image available")
+    content, ctype = got
+    return Response(content=content, media_type=ctype,
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
 @app.get("/api/species_photo")
 def species_photo(
     scientific: str = Query("", max_length=200),
