@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Climbable-Trees Mapping — v1 (Tier A)</title>
+  <link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <link href="/static/style.css" rel="stylesheet" />
+</head>
+<body>
+  <div id="sidebar">
+    <header>
+      <h1>Climbable-Trees <span class="tier">Tier A · v1</span></h1>
+      <p class="tagline">A ranked, confidence-tagged candidate list. This tool
+        <strong>filters and ranks</strong> — it never certifies that a tree is
+        safe to climb.</p>
+    </header>
+
+    <section class="panel">
+      <h2>Your body</h2>
+      <label>Height (m) <input id="h" type="number" step="0.01" value="1.75" /></label>
+      <label>Weight (kg) <input id="weight" type="number" step="1" value="70" /></label>
+      <details>
+        <summary>Advanced tunables (placeholders, not physical truths)</summary>
+        <label>Δ inter-branch step (m) <input id="delta" type="number" step="0.05" value="0.60" /></label>
+        <label>d_min branch dia (cm) <input id="d_min" type="number" step="1" value="10" /></label>
+        <label>α ground-reach coeff <input id="alpha" type="number" step="0.01" value="1.22" /></label>
+      </details>
+    </section>
+
+    <section class="panel">
+      <h2>Search</h2>
+      <label>Radius (m) <input id="radius" type="number" step="50" value="500" /></label>
+      <label class="check"><input id="public_only" type="checkbox" checked /> Public / eligible trees only</label>
+      <label>Min score <input id="min_score" type="range" min="0" max="1" step="0.05" value="0" /> <span id="min_score_val">0</span></label>
+      <button id="search-here">Search this map center</button>
+      <p class="hint">Click the map to drop a search point, or draw a polygon
+        with the ▱ tool, then Search.</p>
+    </section>
+
+    <section class="panel" id="waiver-panel">
+      <h2>Waiver</h2>
+      <label class="check"><input id="waiver" type="checkbox" /> I understand this
+        is <strong>not a safety certification</strong>; branch data is a
+        form-based guess; I climb at my own risk.</label>
+    </section>
+
+    <section class="panel legend">
+      <h2>Confidence</h2>
+      <div class="legend-row"><span class="badge high">high</span> measured DBH + known species</div>
+      <div class="legend-row"><span class="badge med">medium</span> partial evidence</div>
+      <div class="legend-row"><span class="badge low">low</span> estimated / unknown species</div>
+      <p class="hint">Opacity on the map also encodes confidence. Coverage is
+        <em>doubly gated</em> and thinnest exactly where climbers want it most.</p>
+    </section>
+
+    <div id="status"></div>
+  </div>
+
+  <div id="map"></div>
+
+  <!-- Per-tree detail panel -->
+  <aside id="detail" class="hidden">
+    <button id="detail-close">×</button>
+    <h2 id="d-common">—</h2>
+    <div id="d-sci" class="sci"></div>
+    <div id="d-badges"></div>
+
+    <div class="detail-block">
+      <h3>Reach-match</h3>
+      <div id="d-reach"></div>
+    </div>
+
+    <div class="detail-block">
+      <h3>Why scored</h3>
+      <ul id="d-why"></ul>
+    </div>
+
+    <div class="detail-block">
+      <h3>Provenance</h3>
+      <div id="d-prov"></div>
+    </div>
+
+    <!-- Mapillary photo slot WITH required attribution scaffolding (Tier C not
+         wired in v1; the slot + attribution must exist regardless — invariant #5). -->
+    <div class="detail-block" id="d-photo-block">
+      <h3>Ground photo</h3>
+      <div id="d-photo" class="photo-slot">
+        <div class="photo-placeholder">Street-level imagery is a Tier C feature
+          (not wired in v1).</div>
+      </div>
+      <div class="attribution" id="d-attribution">
+        Imagery © contributors ·
+        <a href="https://www.mapillary.com/" target="_blank" rel="noopener">Mapillary</a>
+        <span class="mly-logo" aria-label="Mapillary"></span>
+        — attribution slot reserved (logo + link + contributor line required
+        before any thumbnail is shown).
+      </div>
+    </div>
+
+    <div class="detail-block">
+      <h3>Report / correct</h3>
+      <select id="d-report-kind">
+        <option value="correction">Wrong species / attribute</option>
+        <option value="label">Climbability label (for future ranking)</option>
+        <option value="takedown">Takedown request (private/hazard)</option>
+      </select>
+      <textarea id="d-report-note" placeholder="Optional note"></textarea>
+      <button id="d-report-send">Submit report</button>
+      <div id="d-report-status"></div>
+    </div>
+  </aside>
+
+  <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

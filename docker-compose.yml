@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-trees}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trees}
+      POSTGRES_DB: ${POSTGRES_DB:-trees}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-trees} -d ${POSTGRES_DB:-trees}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-trees}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trees}
+      POSTGRES_DB: ${POSTGRES_DB:-trees}
+    ports:
+      - "8000:8000"
+    # On boot: run migrations, seed the offline sample, then serve.
+    command: >
+      sh -c "python -m db.migrate &&
+             python -m ingest.run_ingest --source portland_parks_trees
+                    --sample data/sample_portland.geojson --to-db &&
+             uvicorn api.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  pgdata:
