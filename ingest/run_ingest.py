@@ -55,6 +55,29 @@ def ingest_source(
     return dedup(trees, meters=1.0)
 
 
+def _reconcile_rows(rows: list[dict], source: dict, radius_m: float) -> list[dict]:
+    """Reconcile ingested rows against live OSM (eligibility gate + hazards).
+
+    Fetches OSM once around the city center; applies the public/private gate and
+    power-line hazard penalty to every tree. Best-effort — Overpass failure
+    leaves rows untouched.
+    """
+    try:
+        from tierB.overpass import fetch_osm_context
+        from tierB.run_reconcile import reconcile_tree
+
+        lon, lat = source["center"]
+        ctx = fetch_osm_context(lon, lat, radius_m)
+        if not (ctx.polygons or ctx.lines):
+            return rows
+        print(f"[ingest] reconciling {source['source_id']} against "
+              f"{len(ctx.polygons)} parcels / {len(ctx.lines)} power lines", file=sys.stderr)
+        return [reconcile_tree(t, ctx) for t in rows]
+    except Exception as e:
+        print(f"[ingest] reconcile skipped for {source['source_id']}: {e}", file=sys.stderr)
+        return rows
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Climbable-Trees ingestion")
     p.add_argument("--list", action="store_true", help="list configured sources")
@@ -64,6 +87,10 @@ def main(argv=None) -> int:
     p.add_argument("--sample", help="local GeoJSON fixture to ingest instead of network")
     p.add_argument("--out", default="data/trees.json", help="dry-run output JSON path")
     p.add_argument("--to-db", action="store_true", help="upsert into PostGIS")
+    p.add_argument("--reconcile", action="store_true",
+                   help="reconcile against live OSM (public/private gate + hazards)")
+    p.add_argument("--reconcile-radius", type=float, default=25000.0,
+                   help="OSM fetch radius (m) around each city center for --reconcile")
     args = p.parse_args(argv)
 
     sources = load_sources()
@@ -94,6 +121,8 @@ def main(argv=None) -> int:
         except Exception as e:  # network / portal errors shouldn't abort the batch
             print(f"[ingest] {src['source_id']} FAILED: {e}", file=sys.stderr)
             continue
+        if args.reconcile and src.get("center"):
+            rows = _reconcile_rows(rows, src, args.reconcile_radius)
         print(f"[ingest] {src['source_id']}: {len(rows)} trees", file=sys.stderr)
         all_rows.extend(rows)
 

@@ -55,6 +55,18 @@ def health():
     }
 
 
+@app.get("/api/species_photo")
+def species_photo(
+    scientific: str = Query("", max_length=200),
+    common: str = Query("", max_length=200),
+    genus: str = Query("", max_length=200),
+):
+    """Reference photo of the SPECIES (from Wikipedia). Not the individual tree."""
+    from .photos import species_photo as lookup
+
+    return lookup(scientific or None, common or None, genus or None)
+
+
 @app.get("/api/cities")
 def get_cities():
     """Configured cities (with map centers) for the selector."""

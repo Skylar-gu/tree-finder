@@ -36,16 +36,15 @@ the running DB (schema already migrated):
 ```bash
 docker compose exec api python -m ingest.run_ingest --list
 docker compose exec api python -m ingest.run_ingest --source nyc_street_trees_2015 --to-db
-docker compose exec api python -m ingest.run_ingest --source portland_parks_trees --to-db
-# ...add sources in ingest/sources.yaml
+# ingest every configured city, WITH OSM eligibility/hazard reconciliation:
+docker compose exec api python -m ingest.run_ingest --all --to-db --reconcile
 ```
 
-Eligibility/hazard reconciliation (OSM parcels + power lines) runs as a batch:
-
-```bash
-docker compose exec api python -m tierB.run_reconcile \
-  --trees data/<your_trees>.geojson --osm data/<osm_extract>.geojson
-```
+`--reconcile` fetches OSM land-use + power lines around each city (Overpass) and
+applies the **public/private gate** and **power-line hazard penalty** during
+ingest, storing `eligible`/`hazards` per tree. It is best-effort: if Overpass is
+unavailable, trees are still ingested (scored on species + trunk size). Re-run
+`ingest.run_ingest` periodically (e.g. a weekly cron) to refresh `captured_at`.
 
 Street-level geometry (measured branch ladders + ground photos) is an **offline
 enrichment** — it needs a Mapillary token and the heavy ML extra

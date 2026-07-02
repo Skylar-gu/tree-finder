@@ -72,6 +72,11 @@ details summary { font-size: 12px; color: var(--muted); cursor: pointer; margin-
   border-radius: 6px; min-height: 90px; display: flex; align-items: center;
   justify-content: center; text-align: center; padding: 12px; }
 .photo-placeholder { font-size: 12px; color: var(--muted); }
+.photo-slot { flex-direction: column; gap: 8px; }
+.species-photo { max-width: 100%; max-height: 220px; border-radius: 6px;
+  object-fit: cover; }
+.photo-credit { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.photo-credit a { color: var(--muted); }
 .attribution { font-size: 10px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
 .attribution a { color: var(--accent); }
 .mly-logo { display: inline-block; width: 12px; height: 12px; border-radius: 2px;

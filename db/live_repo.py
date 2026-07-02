@@ -113,6 +113,24 @@ def _ensure_city(source_id: str) -> list[dict]:
         return []
 
     rows = dedup(rows, meters=1.0)
+
+    # Reconcile against live OSM (public/private gate + power-line hazard) so the
+    # eligibility/hazard signals apply to live trees too. Best-effort: on any
+    # Overpass failure this no-ops and trees keep their species+size score.
+    if os.getenv("LIVE_RECONCILE", "1").lower() in ("1", "true", "yes"):
+        try:
+            from tierB.overpass import fetch_osm_context
+            from tierB.run_reconcile import reconcile_tree
+
+            recon_radius = float(os.getenv("LIVE_RECONCILE_RADIUS_M", "3500"))
+            ctx = fetch_osm_context(lon, lat, recon_radius)
+            if ctx.polygons or ctx.lines:
+                rows = [reconcile_tree(t, ctx) for t in rows]
+                print(f"[live] reconciled {source_id} against "
+                      f"{len(ctx.polygons)} parcels / {len(ctx.lines)} power lines")
+        except Exception as exc:
+            print(f"[live] reconciliation skipped for {source_id}: {exc}")
+
     for t in rows:
         t.setdefault("tree_id", str(uuid.uuid4()))
         t["h3_r8"] = _h3(t["lat"], t["lon"], 8)

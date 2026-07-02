@@ -228,6 +228,37 @@ function showDetail(t) {
 
   $("d-report-send").onclick = () => submitReport(t);
   $("d-report-status").textContent = "";
+
+  loadSpeciesPhoto(t);
+}
+
+// ---- species reference photo (Wikipedia) --------------------------------------
+async function loadSpeciesPhoto(t) {
+  const slot = $("d-photo");
+  slot.innerHTML = `<div class="photo-placeholder">Loading photo…</div>`;
+  try {
+    const q = new URLSearchParams({
+      scientific: t.scientific || "",
+      common: t.common || "",
+      genus: t.genus || "",
+    });
+    const resp = await fetch(`${API}/api/species_photo?${q}`);
+    const d = await resp.json();
+    if (d && d.image) {
+      const title = (d.title || t.common || t.scientific || "species").replace(/"/g, "&quot;");
+      const credit = d.source_url
+        ? `<a href="${d.source_url}" target="_blank" rel="noopener">${d.credit}</a>`
+        : (d.credit || "");
+      slot.innerHTML =
+        `<img class="species-photo" src="${d.image}" alt="${title}" loading="lazy" />` +
+        `<div class="photo-credit"><strong>${title}</strong> — species reference photo` +
+        `<br>${credit}</div>`;
+    } else {
+      slot.innerHTML = `<div class="photo-placeholder">No reference photo found for this species.</div>`;
+    }
+  } catch (e) {
+    slot.innerHTML = `<div class="photo-placeholder">Photo unavailable.</div>`;
+  }
 }
 
 $("detail-close").onclick = () => $("detail").classList.add("hidden");
