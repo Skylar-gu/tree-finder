@@ -10,4 +10,4 @@ pythonpath = ["."]
 addopts = "-q"
 
 [tool.setuptools]
-packages = ["ingest", "features", "score", "db", "api", "tierB"]
+packages = ["ingest", "features", "score", "db", "api", "tierB", "tierC"]

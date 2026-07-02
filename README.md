@@ -10,9 +10,9 @@ ladder of sufficiently-thick branches.
 This repository is the **v1 / Tier A** release: OpenTrees-style ingestion →
 species prior + DBH size → **form-based** reach-match → PostGIS → MapLibre.
 Zero novel ML, zero legal risk. **Tier B (aerial detection + eligibility/hazard
-reconciliation) is now implemented** (see below); Tier C (street-imagery branch
-geometry) and Premium (phone-LiDAR → QSM) remain **intentionally deferred** —
-clean module seams are left for them (see "Module seams" below).
+reconciliation) and Tier C (street-level geometry) are now implemented** (see
+below); Premium (phone-LiDAR → QSM) remains **intentionally deferred** — a clean
+module seam is left for it (see "Module seams" below).
 
 ---
 
@@ -44,6 +44,35 @@ Aerial detection over real imagery needs the extra + a source orthophoto (e.g.
 NAIP): `pip install -r requirements-tierb.txt`, then drive
 `tierB.detect.detect_orthophoto(...)`. **Detectree2** (better F1, needs
 Detectron2) is documented but not wired — add it in a dedicated env.
+
+---
+
+## Tier C — street-level geometry (`tierC/`)
+
+The hard, valuable part (spec §5). Recovers, from opportunistic **Mapillary**
+street imagery, a **trunk DBH cross-check** (reliable-ish) and a **COARSE,
+low-confidence branch ladder** — the branch-ladder signal that no inventory
+carries. Trunk-DBH-from-photo is an established sub-area; per-branch geometry
+from street imagery is barely in the literature, so **branch outputs are
+confidence-gated by construction** and never claim published accuracies.
+
+| Piece | Module | What it does |
+|---|---|---|
+| Imagery | `tierC/mapillary.py` | Mapillary API v4: tile coverage, Graph metadata, **nearest-image-to-point** (fetch tile → filter radius client-side), **`is_pano` exclusion**, and the mandatory **CC-BY-SA attribution** block for any displayed thumbnail. Network I/O is injectable → tests run offline. |
+| Camera | `tierC/camera.py` | Pinhole model + back-projection; **refuses equirectangular frames** (pinhole invalid, spec §5.1). Intrinsics from `camera_parameters` or a depth model that predicts them. |
+| Geometry | `tierC/geometry.py` | Trunk-width→DBH with error band; **Kåsa circle fit** for a back-projected cross-section; branch-ladder extraction from mask discontinuities with per-rung confidence decaying with height. |
+| Backends | `tierC/backends.py` | Lazy **UniDepthV2** (metric depth + intrinsics) + trunk segmenter behind `requirements-tierc.txt`; dependency-free stubs drive the pipeline offline. |
+| Pipeline A | `tierC/pipeline.py` | Single-frame monocular: segment → depth → measure. Emits the §5.3 contract (`dbh_cm_streetcv`, `lowest_branch_h_m`, `branch_ladder`, `tierC_confidence`), **withholding branch outputs below `BRANCH_GATE`**. |
+| Pipeline B | `tierC/multiview.py` | Feed-forward multiview (**VGGT / MapAnything**) — documented seam, not wired. |
+| Integration | `score/reach.py`, `score/climbability.py` | A gated ladder feeds `reach_match(branches=…, ladder_confidence=tierC_confidence)` → the **measured** path replaces the v1 form-based guess; `streetcv_feature(...)` activates the previously-dormant `w_c` term in the score. |
+| Storage | `db/migrations/003_tierc.sql` | `dbh_cm_streetcv`, `lowest_branch_h_m`, `branch_ladder`, `tierc_confidence`, `f_streetcv`, `tierc` (full output incl. attribution). |
+
+**Honesty:** `lowest_branch_h_m` and `branch_ladder` are the least-supported
+outputs in the whole system (spec §5.3, §11). They ship behind `tierC_confidence`
+(capped ≤ 0.70 for monocular) and must be validated against a hand-labelled set
+before being trusted un-hedged. Running real geometry needs
+`pip install -r requirements-tierc.txt` + a Mapillary token — **verify UniDepth /
+VGGT licenses before commercial use** (spec §12).
 
 ---
 

@@ -1,0 +1,25 @@
+# Tier C optional extras (spec §5). Heavy GPU/ML stack — install only when
+# running street-level geometry. The core package and its tests never import
+# these (metric depth + segmentation backends are lazily imported; stubs drive
+# the pipeline offline).
+#
+# VERIFY LICENSES + install instructions from each repo at build time (spec §12,
+# §5.2): UniDepth / Metric3Dv2 / VGGT / MapAnything are research code with
+# non-permissive or ambiguous terms — this matters for a commercial product.
+
+# Metric depth + intrinsics (spec's pick — copes with missing EXIF).
+# Install from source per the repo; pin torch to a compatible build.
+# git+https://github.com/lpiccinelli-eth/UniDepth.git
+torch>=2.2
+torchvision>=0.17
+
+# Trunk / branch segmentation (SegFormer or YOLO-seg — choose one).
+transformers>=4.40      # SegFormer
+# ultralytics>=8.2       # alternative: YOLO-seg
+
+# Imagery IO + vector-tile decoding for Mapillary.
+Pillow>=10.0
+mapbox-vector-tile>=2.0
+
+# Method B (multiview) — VGGT / MapAnything installed from their repos; not
+# pinned here. GPU memory grows with frame count (24–48 GB comfortable).

@@ -101,11 +101,17 @@ class ReachResult:
 
 
 def _measured_ladder(
-    branches: list[tuple[float, float]], p: ReachParams
+    branches: list[tuple[float, float]],
+    p: ReachParams,
+    ladder_confidence: float = 0.9,
 ) -> ReachResult:
     """Run the real mount+ladder logic. Only reachable when branch data exists.
 
     branches: list of (height_m, diameter_cm), any order.
+    ladder_confidence: trust in the branch measurements themselves. Premium
+        phone-LiDAR/QSM is high (~0.9, the default); opportunistic Tier C street
+        imagery is COARSE and low-confidence by construction (spec §5.3), so the
+        Tier C pipeline passes its ``tierC_confidence`` here instead.
     """
     d_min = p.effective_d_min_cm
     # Keep only load-bearing branches, sorted by height.
@@ -125,7 +131,7 @@ def _measured_ladder(
             reachable=False,
             reachable_height_m=None,
             plausibility=None,
-            confidence=0.9,
+            confidence=round(ladder_confidence, 3),
             effective_d_min_cm=d_min,
             notes=notes + ["no branch meets the load-bearing diameter threshold"],
         )
@@ -139,7 +145,7 @@ def _measured_ladder(
             reachable=False,
             reachable_height_m=None,
             plausibility=None,
-            confidence=0.9,
+            confidence=round(ladder_confidence, 3),
             effective_d_min_cm=d_min,
             notes=notes
             + [
@@ -234,17 +240,20 @@ def reach_match(
     params: ReachParams,
     *,
     branches: Optional[list[tuple[float, float]]] = None,
+    ladder_confidence: float = 0.9,
     scaffold_form: Optional[float] = None,
     f_dbh: Optional[float] = None,
     dbh_estimated: bool = False,
 ) -> ReachResult:
     """Entry point.
 
-    If real ``branches`` [(height_m, diameter_cm), ...] are supplied (future Tier
-    C / Premium), run the measured mount+ladder logic. Otherwise (the v1 case)
-    run the clearly-labelled form-based guess. The two modes are never conflated:
-    ``is_measured_ladder`` and ``mode`` tell callers exactly which ran.
+    If real ``branches`` [(height_m, diameter_cm), ...] are supplied (Tier C
+    street CV or Premium LiDAR), run the measured mount+ladder logic — with
+    ``ladder_confidence`` reflecting how much to trust those measurements (Tier C
+    passes its coarse ``tierC_confidence``; Premium passes ~0.9). Otherwise (the
+    v1 case) run the clearly-labelled form-based guess. The two modes are never
+    conflated: ``is_measured_ladder`` and ``mode`` tell callers which ran.
     """
     if branches:
-        return _measured_ladder(branches, params)
+        return _measured_ladder(branches, params, ladder_confidence=ladder_confidence)
     return _form_based_guess(scaffold_form, f_dbh, params, dbh_estimated)
