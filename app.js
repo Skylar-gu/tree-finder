@@ -15,7 +15,8 @@ const MLY_TOKEN = "MLY|27259450777079853|57f15428329a51c19b24017613444fb6";
 
 const map = new maplibregl.Map({
   container: "map",
-  style: "https://tiles.openfreemap.org/styles/liberty",
+  // "bright": OpenFreeMap's soft, pastel style — the smooth Apple-Maps-ish look
+  style: "https://tiles.openfreemap.org/styles/bright",
   center: [-122.4194, 37.7749], // San Francisco (dense real data on load)
   zoom: 15,
 });
@@ -40,6 +41,9 @@ function confTier(c) {
   if (c >= 0.3) return "med";
   return "low";
 }
+
+// scores/confidences render as whole percentages everywhere
+const pct = (x) => `${Math.round((x ?? 0) * 100)}%`;
 
 // ---- cartoon tree icon for strong candidates ------------------------------------
 // Strong candidates (score >= 0.55, the green range) render as a little tree;
@@ -77,7 +81,7 @@ map.on("load", async () => {
         "interpolate", ["linear"], ["coalesce", ["get", "score"], 0],
         0, "#b0563b", 0.4, "#c9922e", 0.7, "#2e9e5b",
       ],
-      "circle-opacity": ["max", 0.25, ["coalesce", ["get", "confidence"], 0.25]],
+      "circle-opacity": 0.85,
       "circle-stroke-color": "#0c0f13",
       "circle-stroke-width": 1,
     },
@@ -93,10 +97,7 @@ map.on("load", async () => {
       "icon-allow-overlap": true,
       "icon-anchor": "bottom",
     },
-    paint: {
-      // opacity still encodes confidence — cute never overrides honest
-      "icon-opacity": ["max", 0.35, ["coalesce", ["get", "confidence"], 0.35]],
-    },
+    paint: { "icon-opacity": 0.85 },
   });
 
   map.addSource("radius", { type: "geojson", data: emptyFC() });
@@ -228,12 +229,16 @@ async function search() {
     }
     const rows = await loadCityTrees(cityEntry);
     const radius = parseFloat($("radius").value) || 500;
-    const minScore = parseFloat($("min_score").value) || 0;
     const publicOnly = $("public_only").checked;
+    const tiersOn = {
+      high: $("conf-high").checked,
+      med: $("conf-med").checked,
+      low: $("conf-low").checked,
+    };
 
     let trees = rows.filter((t) =>
       distanceM(searchPoint, [t.lon, t.lat]) <= radius &&
-      (t.score ?? 0) >= minScore &&
+      tiersOn[confTier(t.confidence || 0)] &&
       (!publicOnly || t.eligible !== false));
     trees.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     trees = trees.slice(0, 500);
@@ -305,36 +310,41 @@ function showDetail(t) {
   // short facts — the at-a-glance summary (max 5)
   const tier = confTier(t.confidence || 0);
   const facts = [
-    `Score <strong>${(t.score ?? 0).toFixed(2)}</strong> · ${tier} confidence`,
+    `Score <strong>${pct(t.score)}</strong> · ${tier} confidence`,
   ];
   if (t.height_m != null) facts.push(`Height ~<strong>${Math.round(t.height_m)} m</strong>`);
-  if (t.dbh_cm != null) facts.push(`Trunk <strong>${Math.round(t.dbh_cm)} cm</strong> thick (DBH)`);
+  if (t.dbh_cm != null) facts.push(`Trunk <strong>${Math.round(t.dbh_cm)} cm</strong> thick`);
   if (rm.plausibility != null) {
-    facts.push(`First branch not measured — low-branch likelihood <strong>${rm.plausibility.toFixed(2)}</strong>`);
+    facts.push(`First branch not measured — low-branch likelihood <strong>${pct(rm.plausibility)}</strong>`);
   }
   if (searchPoint) {
     facts.push(`<strong>${fmtDistance(distanceM(searchPoint, [t.lon, t.lat]))}</strong> from your search point`);
   }
   $("d-facts").innerHTML = facts.slice(0, 5).map((f) => `<li>${f}</li>`).join("");
 
-  // reach-match: in the static demo this is always the form-based guess
-  const p = rm.plausibility == null ? "—" : rm.plausibility.toFixed(2);
-  let reachHtml =
-    `<span class="badge guess">form-based guess</span>` +
-    `<div class="guess-note"><strong>Not a measured ladder.</strong> No measured
-     branch geometry for this tree yet. Plausibility that this species at this
-     trunk size offers a low, climbable scaffold: <strong>${p}</strong>.
-     Effective d_min for your weight: ${rm.effective_d_min_cm} cm.</div>`;
-  if (!$("waiver").checked) {
-    reachHtml += `<div class="hint">Accept the waiver to acknowledge residual risk.</div>`;
-  }
-  $("d-reach").innerHTML = reachHtml;
+  // match category: label + what it means, in plain language
+  $("d-reach").innerHTML = rm.is_measured_ladder
+    ? `<span class="badge high">measured ladder</span>
+       <div class="hint">Someone actually measured this tree's branches — the
+       match is based on real branch positions, not a guess.</div>`
+    : `<span class="badge guess">form-based guess</span>
+       <div class="hint">An educated guess from this species' typical shape and
+       trunk size — nobody has measured this tree's branches yet.</div>`;
 
-  // why-scored trace
+  // score breakdown: short friendly titles, whole percentages, no sub-notes
+  const FEATURE_TITLES = {
+    species: "Species wood & form",
+    dbh: "Trunk size plausibility",
+    street_geometry: "Street-level branch measurements",
+    _aggregate: "Overall weighted score",
+    _eligibility: "Eligibility & hazard gate",
+  };
   const why = t.why_scored || [];
   $("d-why").innerHTML = why.map((w) => {
-    const v = w.value == null ? "null" : (typeof w.value === "number" ? w.value.toFixed(3) : w.value);
-    return `<li><strong>${w.feature}</strong>: ${v}<br><span class="hint">${w.note || ""}</span></li>`;
+    const title = FEATURE_TITLES[w.feature] || w.feature.replace(/_/g, " ");
+    const v = typeof w.value === "number" ? `<strong>${pct(w.value)}</strong>`
+      : (w.value == null ? "<em>not available</em>" : w.value);
+    return `<li>${title}: ${v}</li>`;
   }).join("");
 
   // provenance
@@ -452,7 +462,17 @@ loadCities();
 // ---- controls ---------------------------------------------------------------------
 $("search-here").onclick = search;
 $("radius").oninput = drawRadius;
-$("min_score").oninput = () => ($("min_score_val").textContent = $("min_score").value);
+for (const id of ["conf-high", "conf-med", "conf-low"]) $(id).onchange = search;
+
+// ---- terms & waiver pop-up ---------------------------------------------------------
+if (!localStorage.getItem("treesWaiverAccepted")) {
+  $("waiver-modal").classList.remove("hidden");
+}
+$("waiver-check").onchange = (e) => ($("waiver-accept").disabled = !e.target.checked);
+$("waiver-accept").onclick = () => {
+  localStorage.setItem("treesWaiverAccepted", new Date().toISOString());
+  $("waiver-modal").classList.add("hidden");
+};
 
 // polygon toggle button injected into the map
 const polyBtn = document.createElement("button");

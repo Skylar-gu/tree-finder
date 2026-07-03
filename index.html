@@ -18,13 +18,13 @@
 
     <section class="panel">
       <h2>City</h2>
-      <label>Jump to <select id="city"><option value="">— select a city —</option></select></label>
+      <label><select id="city"><option value="">— select a city —</option></select></label>
       <p class="hint">Real municipal tree-inventory data, pre-scored and snapshotted
         for this demo. Pick a city, then pan and Search to explore.</p>
     </section>
 
     <section class="panel">
-      <h2>Your body</h2>
+      <h2>My parameters</h2>
       <label>Height (m) <input id="h" type="number" step="0.01" value="1.75" /></label>
       <label>Weight (kg) <input id="weight" type="number" step="1" value="70" /></label>
       <details>
@@ -39,28 +39,19 @@
       <h2>Search</h2>
       <label>Radius (m) <input id="radius" type="number" step="50" value="500" /></label>
       <label class="check"><input id="public_only" type="checkbox" checked /> Public / eligible trees only</label>
-      <label>Min score <input id="min_score" type="range" min="0" max="1" step="0.05" value="0" /> <span id="min_score_val">0</span></label>
+      <div class="conf-toggles">
+        <span class="conf-title">Confidence</span>
+        <label class="check"><input id="conf-high" type="checkbox" checked />
+          <span class="badge high">high</span> measured trunk + known species</label>
+        <label class="check"><input id="conf-med" type="checkbox" checked />
+          <span class="badge med">medium</span> partial evidence</label>
+        <label class="check"><input id="conf-low" type="checkbox" checked />
+          <span class="badge low">low</span> estimated / unknown species</label>
+      </div>
       <button id="search-here">Search this map center</button>
-      <p class="hint">Candidates load automatically at the map center. Click the
-        map to search elsewhere, or draw a polygon with the ▱ tool, then Search.</p>
-    </section>
-
-    <section class="panel" id="waiver-panel">
-      <h2>Waiver</h2>
-      <label class="check"><input id="waiver" type="checkbox" /> I understand this
-        is <strong>not a safety certification</strong>; branch data is a
-        form-based guess; I climb at my own risk.</label>
-    </section>
-
-    <section class="panel legend">
-      <h2>Confidence</h2>
-      <div class="legend-row">🌳 tree icon = strong candidate (score ≥ 0.55);
-        amber/rust dots = weaker candidates</div>
-      <div class="legend-row"><span class="badge high">high</span> measured DBH + known species</div>
-      <div class="legend-row"><span class="badge med">medium</span> partial evidence</div>
-      <div class="legend-row"><span class="badge low">low</span> estimated / unknown species</div>
-      <p class="hint">Opacity on the map also encodes confidence. Coverage is
-        <em>doubly gated</em> and thinnest exactly where climbers want it most.</p>
+      <p class="hint">🌳 tree icon = strong candidate · dots = weaker candidates.
+        Candidates load automatically at the map center. Click the map to search
+        elsewhere, or draw a polygon with the ▱ tool, then Search.</p>
     </section>
 
     <div id="status"></div>
@@ -88,12 +79,12 @@
     <ul id="d-facts" class="facts"></ul>
 
     <details class="detail-block">
-      <summary>Reach-match</summary>
+      <summary>Match category</summary>
       <div id="d-reach"></div>
     </details>
 
     <details class="detail-block">
-      <summary>Why scored</summary>
+      <summary>Score breakdown</summary>
       <ul id="d-why"></ul>
     </details>
 
@@ -130,6 +121,47 @@
         rel="noopener">repository</a> to run it.</p>
     </details>
   </aside>
+
+  <!-- Terms & waiver pop-up: shown until accepted (mock terms, real warning) -->
+  <div id="waiver-modal" class="hidden">
+    <div class="waiver-card">
+      <h2>🌳 Before you climb…</h2>
+      <div class="waiver-scroll">
+        <p><strong>Terms of Use &amp; Assumption of Risk</strong> (demonstration
+          document — not legal advice)</p>
+        <p><strong>1. What this service is.</strong> Climbable-Trees ranks
+          publicly-inventoried trees by how <em>plausibly</em> climbable they are,
+          using species characteristics, trunk measurements, and open map data.
+          It is a discovery tool.</p>
+        <p><strong>2. What this service is not.</strong> It is <em>not</em> a
+          safety inspection, engineering assessment, or certification of any
+          tree. No output — score, confidence, match category, or measurement —
+          states that a tree, branch, or activity is safe.</p>
+        <p><strong>3. Estimates have errors.</strong> Every number is an estimate
+          with an error band. Branch data is usually a guess from the species'
+          typical shape, not a measurement. Trees change: they grow, rot, crack,
+          and shed limbs without notice.</p>
+        <p><strong>4. Assumption of risk.</strong> Climbing trees can cause
+          serious injury or death. If you climb, you do so entirely at your own
+          risk, and you are responsible for inspecting the tree yourself and for
+          your own decisions.</p>
+        <p><strong>5. Follow the law and the land.</strong> You are responsible
+          for complying with local rules, park regulations, and property rights.
+          A tree appearing here does not grant permission to climb it.</p>
+        <p><strong>6. Data &amp; licenses.</strong> Tree records come from
+          municipal open-data portals; map data © OpenStreetMap contributors;
+          street photos © their Mapillary contributors (CC BY-SA 4.0).</p>
+        <p><strong>7. No liability.</strong> To the maximum extent permitted by
+          law, the makers of this demonstration accept no liability for any harm
+          arising from its use.</p>
+      </div>
+      <div class="waiver-warning">⚠️ This tool filters and ranks — it never
+        certifies that a tree is safe to climb.</div>
+      <label class="check"><input id="waiver-check" type="checkbox" />
+        I understand the risks and that this is not a safety certification.</label>
+      <button id="waiver-accept" disabled>Let's find some trees</button>
+    </div>
+  </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
   <script src="app.js"></script>
