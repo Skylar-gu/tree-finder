@@ -66,46 +66,42 @@
 
   <div id="map"></div>
 
-  <!-- Per-tree detail panel -->
+  <!-- Per-tree detail panel: name + photo up top, short facts, then the
+       honest detail (reach-match / why-scored / provenance) collapsed below.
+       Street photo credit (Mapillary contributor + logo/link, CC BY-SA)
+       renders directly under the image — a licensing obligation. -->
   <aside id="detail" class="hidden">
     <button id="detail-close">×</button>
-    <h2 id="d-common">—</h2>
-    <div id="d-sci" class="sci"></div>
-    <div id="d-badges"></div>
 
-    <div class="detail-block">
-      <h3>Reach-match</h3>
+    <div class="detail-head">
+      <div class="detail-title">
+        <h2 id="d-common">—</h2>
+        <div id="d-sci" class="sci"></div>
+      </div>
+      <div id="d-photo" class="photo-slot compact">
+        <div class="photo-placeholder">—</div>
+      </div>
+    </div>
+
+    <ul id="d-facts" class="facts"></ul>
+
+    <details class="detail-block">
+      <summary>Reach-match</summary>
       <div id="d-reach"></div>
-    </div>
+    </details>
 
-    <div class="detail-block">
-      <h3>Why scored</h3>
+    <details class="detail-block">
+      <summary>Why scored</summary>
       <ul id="d-why"></ul>
-    </div>
+    </details>
 
-    <div class="detail-block">
-      <h3>Provenance</h3>
+    <details class="detail-block">
+      <summary>Provenance</summary>
       <div id="d-prov"></div>
-    </div>
+    </details>
 
-    <!-- Species reference photo (Wikipedia). A photo of the individual tree would
-         come from the Mapillary street-imagery enrichment (with CC-BY-SA credit). -->
-    <div class="detail-block" id="d-photo-block">
-      <h3>Photo</h3>
-      <div id="d-photo" class="photo-slot">
-        <div class="photo-placeholder">Select a tree to load a species photo.</div>
-      </div>
-      <div class="attribution" id="d-attribution">
-        Imagery © contributors ·
-        <a href="https://www.mapillary.com/" target="_blank" rel="noopener">Mapillary</a>
-        <span class="mly-logo" aria-label="Mapillary"></span>
-        — attribution slot reserved (logo + link + contributor line required
-        before any thumbnail is shown).
-      </div>
-    </div>
-
-    <div class="detail-block">
-      <h3>Report / correct</h3>
+    <details class="detail-block">
+      <summary>Report / correct</summary>
       <select id="d-report-kind">
         <option value="correction">Wrong species / attribute</option>
         <option value="label">Climbability label (for future ranking)</option>
@@ -114,7 +110,7 @@
       <textarea id="d-report-note" placeholder="Optional note"></textarea>
       <button id="d-report-send">Submit report</button>
       <div id="d-report-status"></div>
-    </div>
+    </details>
   </aside>
 
   <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>

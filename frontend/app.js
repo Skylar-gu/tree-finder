@@ -185,14 +185,26 @@ function showDetail(t) {
   $("d-common").textContent = t.common || t.genus || "Unknown tree";
   $("d-sci").textContent = t.scientific || "";
 
+  const rm = t.reach_match || {};
+
+  // short facts — the at-a-glance summary (max 5)
   const tier = confTier(t.confidence || 0);
-  $("d-badges").innerHTML =
-    `<span class="badge ${tier}">confidence ${(t.confidence || 0).toFixed(2)}</span>` +
-    `<span class="badge">score ${(t.score ?? 0).toFixed(2)}</span>` +
-    (t.dbh_cm ? `<span class="badge">DBH ${t.dbh_cm}cm</span>` : "");
+  const facts = [
+    `Score <strong>${(t.score ?? 0).toFixed(2)}</strong> · ${tier} confidence`,
+  ];
+  if (t.height_m != null) facts.push(`Height ~<strong>${Math.round(t.height_m)} m</strong>`);
+  if (t.dbh_cm != null) facts.push(`Trunk <strong>${Math.round(t.dbh_cm)} cm</strong> thick (DBH)`);
+  if (rm.is_measured_ladder && (rm.ladder || []).length) {
+    facts.push(`First branch at <strong>${rm.ladder[0].height_m} m</strong> (measured)`);
+  } else if (rm.plausibility != null) {
+    facts.push(`First branch not measured — low-branch likelihood <strong>${rm.plausibility.toFixed(2)}</strong>`);
+  }
+  if (searchPoint) {
+    facts.push(`<strong>${fmtDistance(distanceM(searchPoint, [t.lon, t.lat]))}</strong> from your search point`);
+  }
+  $("d-facts").innerHTML = facts.slice(0, 5).map((f) => `<li>${f}</li>`).join("");
 
   // reach-match: a measured ladder when street geometry exists, else a guess
-  const rm = t.reach_match || {};
   let reachHtml = "";
   if (rm.is_measured_ladder) {
     reachHtml = `<div>Measured ladder to <strong>${rm.reachable_height_m} m</strong> (${rm.ladder.length} branches).</div>`;
@@ -232,14 +244,33 @@ function showDetail(t) {
   loadTreePhoto(t);
 }
 
-// ---- tree photo: real Street View of the spot, else species reference ---------
+// ---- distance from search point ------------------------------------------------
+function distanceM(a, b) {
+  const R = 6371000, toRad = (x) => (x * Math.PI) / 180;
+  const dLat = toRad(b[1] - a[1]), dLon = toRad(b[0] - a[0]);
+  const s = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+function fmtDistance(m) { return m < 950 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`; }
+
+// ---- tree photo: real street-level photo of the spot, else species reference ---
 async function loadTreePhoto(t) {
   const slot = $("d-photo");
   slot.innerHTML = `<div class="photo-placeholder">Loading photo…</div>`;
-  // 1) Try a photo of the ACTUAL location (Google Street View).
+  // 1) Try a photo of the ACTUAL location (Mapillary, else Google Street View).
   try {
     const q = new URLSearchParams({ lat: t.lat, lon: t.lon });
     const info = await (await fetch(`${API}/api/tree_photo?${q}`)).json();
+    if (info && info.available && info.provider === "mapillary") {
+      // CC BY-SA: contributor + Mapillary logo/link must render with the image.
+      slot.innerHTML =
+        `<img class="species-photo" src="${info.image}" alt="street-level photo at this tree" loading="lazy" />` +
+        `<div class="photo-credit">© ${info.creator || "contributor"} · ` +
+        `<a href="${info.url}" target="_blank" rel="noopener"><span class="mly-logo" aria-label="Mapillary"></span> Mapillary</a>` +
+        ` CC BY-SA${info.date ? ` · ${info.date}` : ""}</div>`;
+      return;
+    }
     if (info && info.available) {
       const iq = new URLSearchParams({ lat: t.lat, lon: t.lon });
       if (info.heading != null) iq.set("heading", info.heading);

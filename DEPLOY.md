@@ -96,12 +96,15 @@ Serves the tiny bundled offline sample from memory (no network). Inspection only
 - **Basemap at scale:** OpenFreeMap's public endpoint is free but best-effort;
   for production traffic self-host OpenFreeMap/OpenMapTiles or use a keyed
   provider (MapTiler, etc.) and update the `style` URL in `frontend/app.js`.
-- **Tree photos (Street View):** set `GOOGLE_MAPS_API_KEY` (with the *Street View
-  Static API* enabled) to show a real photo of each tree's location in the detail
-  panel — "what you'd see on Google Maps", auto-rotated to face the tree. The key
-  stays server-side (the image is proxied via `/api/tree_photo/image`). Without a
-  key, a Wikipedia species reference photo is shown instead. Street View is
-  billed per image by Google; the proxy sets a 1-day cache header.
+- **Tree photos (street-level):** set `MAPILLARY_TOKEN` (free — register an app
+  at mapillary.com/dashboard/developers) to show a real, open-licensed street
+  photo of each tree's location in the detail panel. Imagery is CC BY-SA 4.0;
+  the contributor + Mapillary logo/link credit renders under the image (a
+  license obligation, not optional). Alternatively (or as a fallback where
+  Mapillary has no coverage), set `GOOGLE_MAPS_API_KEY` (with the *Street View
+  Static API* enabled) — auto-rotated to face the tree, key stays server-side
+  (image proxied via `/api/tree_photo/image`), billed per image by Google.
+  With neither, a Wikipedia species reference photo is shown instead.
 - **Attribution:** if you display Mapillary ground photos, the CC-BY-SA logo +
   link + contributor credit must render (the slot + `provenance ... attribution`
   already carry it). This is a licensing obligation, not optional.

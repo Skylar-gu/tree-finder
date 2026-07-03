@@ -22,9 +22,81 @@ from typing import Optional
 _SV_META = "https://maps.googleapis.com/maps/api/streetview/metadata"
 _SV_IMAGE = "https://maps.googleapis.com/maps/api/streetview"
 
+# --- Mapillary: OPEN street-level imagery (CC BY-SA 4.0), free access token ----
+# Preferred provider when MAPILLARY_TOKEN is set. Thumb URLs are short-lived
+# CDN links fetched fresh per request, so they go straight to the browser (no
+# proxy needed). Attribution (contributor + Mapillary logo/link) is a license
+# obligation — the frontend renders it under the image.
+_MLY_IMAGES = "https://graph.mapillary.com/images"
+
 
 def _google_key() -> Optional[str]:
     return os.getenv("GOOGLE_MAPS_API_KEY") or None
+
+
+def _mapillary_token() -> Optional[str]:
+    return os.getenv("MAPILLARY_TOKEN") or None
+
+
+def mapillary_photo_info(lat: float, lon: float, radius_m: float = 50.0,
+                         fetch=None) -> dict:
+    """Nearest open street-level photo of this spot from Mapillary.
+
+    Searches a small bbox around the tree and returns the closest image with
+    its contributor + capture date for the CC BY-SA credit line.
+    """
+    token = _mapillary_token()
+    if not token:
+        return {"available": False, "provider": "mapillary",
+                "reason": "MAPILLARY_TOKEN not set"}
+    dlat = radius_m / 111320.0
+    dlon = radius_m / (111320.0 * max(0.2, math.cos(math.radians(lat))))
+    params = {
+        "access_token": token,
+        "bbox": f"{lon - dlon},{lat - dlat},{lon + dlon},{lat + dlat}",
+        "fields": "id,thumb_1024_url,computed_geometry,captured_at,creator",
+        "limit": 20,
+    }
+    try:
+        if fetch is not None:
+            data = fetch(_MLY_IMAGES, params)
+        else:
+            import requests
+
+            data = requests.get(_MLY_IMAGES, params=params, timeout=12).json()
+    except Exception as exc:
+        return {"available": False, "provider": "mapillary", "reason": str(exc)}
+
+    best, best_d2 = None, None
+    for img in (data or {}).get("data") or []:
+        coords = (img.get("computed_geometry") or {}).get("coordinates") or []
+        if len(coords) != 2 or not img.get("thumb_1024_url"):
+            continue
+        dx = (coords[0] - lon) * math.cos(math.radians(lat))
+        dy = coords[1] - lat
+        d2 = dx * dx + dy * dy
+        if best_d2 is None or d2 < best_d2:
+            best, best_d2 = img, d2
+    if best is None:
+        return {"available": False, "provider": "mapillary",
+                "reason": "no Mapillary imagery near this location"}
+
+    date = None
+    captured = best.get("captured_at")
+    if isinstance(captured, (int, float)):
+        from datetime import datetime, timezone
+
+        date = datetime.fromtimestamp(captured / 1000, tz=timezone.utc).strftime("%Y-%m")
+    creator = (best.get("creator") or {}).get("username")
+    return {
+        "available": True,
+        "provider": "mapillary",
+        "image": best["thumb_1024_url"],
+        "url": f"https://www.mapillary.com/app/?focus=photo&pKey={best['id']}",
+        "creator": creator,
+        "date": date,
+        "attribution": f"© {creator or 'contributor'} — Mapillary, CC BY-SA 4.0",
+    }
 
 
 def _bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -39,14 +111,21 @@ def _bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 def tree_photo_info(lat: float, lon: float, fetch=None) -> dict:
     """Is there a street-level photo of this exact spot, and which way to look?
 
-    Uses the (free) Street View metadata endpoint so we never show a grey
-    "no imagery" tile, and computes the heading from the nearest panorama toward
-    the tree so the image actually faces it.
+    Providers, in order: Mapillary (open, CC BY-SA, free token) when
+    MAPILLARY_TOKEN is set, then Google Street View when GOOGLE_MAPS_API_KEY
+    is set. For Google, uses the (free) metadata endpoint so we never show a
+    grey "no imagery" tile, and computes the heading from the nearest panorama
+    toward the tree so the image actually faces it.
     """
+    if _mapillary_token():
+        mly = mapillary_photo_info(lat, lon, fetch=fetch)
+        if mly.get("available"):
+            return mly
     key = _google_key()
     if not key:
         return {"available": False, "provider": None,
-                "reason": "no street-imagery provider configured (set GOOGLE_MAPS_API_KEY)"}
+                "reason": "no street-imagery provider configured "
+                          "(set MAPILLARY_TOKEN or GOOGLE_MAPS_API_KEY)"}
     try:
         params = {"location": f"{lat},{lon}", "key": key}
         if fetch is not None:
