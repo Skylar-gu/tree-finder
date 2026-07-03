@@ -52,7 +52,7 @@ def cities() -> list[dict]:
         out = []
         for s in load_sources():
             c = s.get("center")
-            if c and s.get("country") == "US":
+            if c and s.get("country") in ("US", "CA"):
                 out.append({
                     "source_id": s["source_id"],
                     "city": s.get("city", s["source_id"]),

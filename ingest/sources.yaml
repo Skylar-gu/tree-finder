@@ -268,3 +268,66 @@ sources:
       ref: ":id"
     units:
       dbh: in
+
+  # ---------------------------------------------------------------- Boston (live)
+  # Official Parks & Rec street-tree layer. Species + location only (no DBH),
+  # so trees score on the species prior alone and carry honestly low confidence.
+  - source_id: boston_street_trees
+    name: "Boston Primary Street Trees (Parks & Recreation)"
+    country: US
+    city: Boston
+    center: [-71.0589, 42.3601]
+    portal: arcgis
+    path: live
+    url: "https://services.arcgis.com/sFnw0xNflSi8J0uh/arcgis/rest/services/Primary_Street_Trees_Public/FeatureServer/0"
+    license: "City of Boston open data"
+    public_default: true
+    crosswalk:
+      scientific: Species
+      ref: FID
+
+  # --------------------------------------------------------------- Toronto (live)
+  # Citywide datastore is ~700k rows in arbitrary order; the WARD filter scopes
+  # the pull to University-Rosedale (downtown) so the demo slice is coherent.
+  - source_id: toronto_street_trees
+    name: "City of Toronto Street Tree Data (downtown ward)"
+    country: CA
+    city: Toronto
+    center: [-79.3927, 43.6656]
+    portal: ckan
+    path: live
+    url: "https://ckan0.cf.opendata.inter.prod-toronto.ca"
+    resource_id: "3dafa392-c6ab-4f37-9bf9-21ddf7308eaf"
+    filters:
+      WARD: "11"
+    license: "Open Government Licence — Toronto"
+    public_default: true
+    crosswalk:
+      scientific: BOTANICAL_NAME
+      common: COMMON_NAME
+      dbh: DBH_TRUNK          # centimetres
+      ref: STRUCTID
+
+  # -------------------------------------------------------------- Montreal (live)
+  # Scoped to Ville-Marie (downtown borough) — same arbitrary-order reason.
+  # DHP = diamètre à hauteur de poitrine, already centimetres.
+  - source_id: montreal_public_trees
+    name: "Ville de Montréal — Arbres publics (Ville-Marie)"
+    country: CA
+    city: Montreal
+    center: [-73.5674, 45.5088]
+    portal: ckan
+    path: live
+    url: "https://donnees.montreal.ca"
+    resource_id: "64e28fe6-ef37-437a-972d-d1d3f1f7d891"
+    filters:
+      ARROND_NOM: "Ville-Marie"
+    license: "CC BY 4.0 — Données ouvertes Montréal"
+    public_default: true
+    crosswalk:
+      scientific: Essence_latin
+      common: Essence_ang
+      dbh: DHP                # centimetres
+      lon: Longitude
+      lat: Latitude
+      ref: EMP_NO

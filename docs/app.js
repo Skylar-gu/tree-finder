@@ -20,7 +20,14 @@ const map = new maplibregl.Map({
   center: [-122.4194, 37.7749], // San Francisco (dense real data on load)
   zoom: 15,
 });
-map.addControl(new maplibregl.NavigationControl(), "top-left");
+// no compass: on a north-up map its up/down arrows look broken (they only
+// reset rotation, which never changes here)
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
+const geolocate = new maplibregl.GeolocateControl({
+  positionOptions: { enableHighAccuracy: true },
+  showUserLocation: true,
+});
+map.addControl(geolocate, "top-left");
 
 let searchPoint = null;      // [lon, lat]
 let searchMarker = null;
@@ -137,7 +144,7 @@ function onMapClick(e) {
   if (polygon.length >= 3) {   // clicking elsewhere leaves area mode
     polygon = [];
     drawPolygon();
-    polyBtn.textContent = "▱ draw area";
+    polyBtn.textContent = "▱ polygon";
   }
   searchPoint = [e.lngLat.lng, e.lngLat.lat];
   if (searchMarker) searchMarker.remove();
@@ -457,15 +464,45 @@ async function loadCities() {
 }
 $("city").onchange = (e) => {
   if (!e.target.value) return;
+  if (e.target.value === "geo") { goToMyLocation(false); return; }
   const center = JSON.parse(e.target.value);
+  jumpTo(center);
+};
+function jumpTo(center) {
   searchPoint = center;
   if (searchMarker) searchMarker.remove();
   searchMarker = new maplibregl.Marker({ color: "#4ea36b" }).setLngLat(center).addTo(map);
   map.flyTo({ center, zoom: 15 });
   drawRadius();
   map.once("moveend", search);
-};
+}
 loadCities();
+
+// ---- my location (default city choice) --------------------------------------------
+function goToMyLocation(silent) {
+  if (!navigator.geolocation) {
+    if (!silent) setStatus("This browser has no location support — pick a city instead.");
+    return;
+  }
+  setStatus("Locating you…");
+  navigator.geolocation.getCurrentPosition(
+    (pos) => jumpTo([pos.coords.longitude, pos.coords.latitude]),
+    (err) => setStatus(silent
+      ? "" // declined on auto-attempt: stay on the default city quietly
+      : `Location unavailable (${err.message}) — pick a city instead.`),
+    { enableHighAccuracy: true, timeout: 10000 },
+  );
+}
+// "My location" is the default selection — try once on load; falling back to
+// the initial map view if the user declines.
+map.once("load", () => goToMyLocation(true));
+
+// ---- mobile sidebar drawer ---------------------------------------------------------
+$("sidebar-toggle").onclick = () => {
+  const collapsed = $("sidebar").classList.toggle("collapsed");
+  $("sidebar-toggle").textContent = collapsed ? "›" : "‹";
+  setTimeout(() => map.resize(), 280); // after the CSS transition
+};
 
 // ---- controls ---------------------------------------------------------------------
 $("search-here").onclick = search;
@@ -482,32 +519,30 @@ $("waiver-accept").onclick = () => {
   $("waiver-modal").classList.add("hidden");
 };
 
-// polygon draw button — sits below the zoom controls so the detail panel
-// (top-right) can never cover it
+// polygon draw button (top-right of the map)
 const polyBtn = document.createElement("button");
-polyBtn.textContent = "▱ draw area";
-polyBtn.style.cssText =
-  "position:absolute;top:120px;left:10px;width:auto;z-index:4;margin:0;padding:8px 12px;";
+polyBtn.textContent = "▱ polygon";
+polyBtn.style.cssText = "position:absolute;top:10px;right:10px;width:auto;z-index:4;margin:0;padding:8px 12px;";
 polyBtn.onclick = () => {
   if (polygonMode) {                    // cancel drawing
     polygonMode = false;
     polygon = [];
     drawPolygon();
-    polyBtn.textContent = "▱ draw area";
+    polyBtn.textContent = "▱ polygon";
   } else if (polygon.length >= 3) {     // clear the finished area
     polygon = [];
     drawPolygon();
-    polyBtn.textContent = "▱ draw area";
+    polyBtn.textContent = "▱ polygon";
     drawRadius();
     search();
   } else {                              // start drawing
     polygonMode = true;
     polygon = [];
     drawPolygon();
-    polyBtn.textContent = "▱ click corners… dbl-click to finish";
+    polyBtn.textContent = "▱ drawing… (dbl-click to finish)";
   }
 };
-map.getContainer().appendChild(polyBtn);
+document.body.appendChild(polyBtn);
 
 function finishPolygon() {
   polygonMode = false;
@@ -521,7 +556,7 @@ function finishPolygon() {
   if (polygon.length < 3) {
     polygon = [];
     drawPolygon();
-    polyBtn.textContent = "▱ draw area";
+    polyBtn.textContent = "▱ polygon";
     setStatus("Area needs at least 3 corners — try again.");
     return;
   }

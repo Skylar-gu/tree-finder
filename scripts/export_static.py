@@ -32,6 +32,23 @@ def _trim(t: dict) -> dict:
     return out
 
 
+# Which cities the static demo exposes — well-known ones only. Sources stay in
+# sources.yaml for the full app regardless.
+DEMO_CITIES = {
+    "nyc_street_trees_2015", "sf_street_trees", "denver_tree_inventory",
+    "honolulu_exceptional_trees", "cambridge_street_trees",
+    "boston_street_trees", "toronto_street_trees", "montreal_public_trees",
+}
+
+
+def _median_center(rows: list[dict]) -> list[float]:
+    """Median lon/lat of the exported trees, so the selector lands on data
+    (portal-side ordering/filters can pull a slice away from the yaml center)."""
+    lons = sorted(t["lon"] for t in rows)
+    lats = sorted(t["lat"] for t in rows)
+    return [round(lons[len(lons) // 2], 5), round(lats[len(lats) // 2], 5)]
+
+
 def main() -> int:
     from db import live_repo
 
@@ -41,6 +58,8 @@ def main() -> int:
     manifest = []
     for c in live_repo.cities():
         sid = c["source_id"]
+        if sid not in DEMO_CITIES:
+            continue
         rows = live_repo._ensure_city(sid)
         if not rows:
             print(f"[export] SKIP {sid}: no rows (portal down?)")
@@ -51,7 +70,7 @@ def main() -> int:
         manifest.append({
             "source_id": sid,
             "city": c["city"],
-            "center": c["center"],
+            "center": _median_center(trimmed),
             "count": len(trimmed),
             "file": f"data/{sid}.json",
         })

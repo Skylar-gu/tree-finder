@@ -155,29 +155,65 @@ def iter_records_arcgis(
 
 
 # -------------------------------------------------------------------- CKAN
+def _inject_ckan_geometry(rec: dict) -> dict:
+    """Inject ``_lon``/``_lat`` when a CKAN row carries a GeoJSON point.
+
+    Some datastores (e.g. Toronto) store geometry as a JSON *string* column.
+    """
+    geom = rec.get("geometry")
+    if isinstance(geom, str) and geom.lstrip().startswith("{"):
+        import json
+
+        try:
+            geom = json.loads(geom)
+        except ValueError:
+            return rec
+    if isinstance(geom, dict) and geom.get("type") == "Point":
+        coords = geom.get("coordinates") or [None, None]
+        rec["_lon"], rec["_lat"] = coords[0], coords[1]
+    return rec
+
+
 def iter_records_ckan(
     base_url: str,
     resource_id: str,
     *,
+    filters: Optional[dict] = None,
     page: int = DEFAULT_PAGE,
     max_records: Optional[int] = None,
     session=None,
 ) -> Iterator[dict]:
-    """Page a CKAN datastore_search resource."""
+    """Page a CKAN datastore_search resource.
+
+    ``filters`` is CKAN's exact-match filter dict (JSON-encoded on the wire) —
+    used to scope huge citywide datastores to one ward/borough.
+    """
+    import json
+
     s = _session(session)
     endpoint = base_url.rstrip("/") + "/api/3/action/datastore_search"
     offset = 0
     fetched = 0
     while True:
         params = {"resource_id": resource_id, "limit": page, "offset": offset}
-        resp = s.get(endpoint, params=params, timeout=DEFAULT_TIMEOUT)
+        if filters:
+            params["filters"] = json.dumps(filters)
+        # Some datastores (Toronto) time out on cold pages; retry before giving up.
+        resp = None
+        for attempt in (1, 2, 3):
+            try:
+                resp = s.get(endpoint, params=params, timeout=DEFAULT_TIMEOUT * attempt)
+                break
+            except Exception:
+                if attempt == 3:
+                    raise
         resp.raise_for_status()
         result = resp.json().get("result", {})
         records = result.get("records", [])
         if not records:
             break
         for rec in records:
-            yield rec
+            yield _inject_ckan_geometry(rec)
             fetched += 1
             if max_records and fetched >= max_records:
                 return
@@ -249,6 +285,7 @@ def iter_source_records(
         return iter_records_ckan(
             source["url"],
             source["resource_id"],
+            filters=source.get("filters"),
             max_records=max_records,
             session=session,
         )
