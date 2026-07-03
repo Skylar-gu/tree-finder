@@ -41,13 +41,36 @@ function confTier(c) {
   return "low";
 }
 
+// ---- cartoon tree icon for strong candidates ------------------------------------
+// Strong candidates (score >= 0.55, the green range) render as a little tree;
+// lower-score trees KEEP their amber/rust dots so the score encoding survives.
+const TREE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <ellipse cx="24" cy="43" rx="9" ry="2.6" fill="rgba(40,60,40,0.25)"/>
+  <path d="M21.6 29h4.8v13h-4.8z" fill="#8d5a2b" stroke="#5d3a18" stroke-width="1.4" stroke-linejoin="round"/>
+  <circle cx="14.5" cy="23.5" r="8.2" fill="#4cc06d" stroke="#1e7a3e" stroke-width="1.6"/>
+  <circle cx="33.5" cy="23.5" r="8.2" fill="#37a355" stroke="#1e7a3e" stroke-width="1.6"/>
+  <circle cx="24" cy="14.5" r="10.2" fill="#3fae5e" stroke="#1e7a3e" stroke-width="1.6"/>
+  <circle cx="24" cy="22.5" r="9.4" fill="#45b862" stroke="none"/>
+  <circle cx="19.5" cy="13.5" r="2.1" fill="#8fe0a8"/>
+</svg>`;
+
+function loadTreeIcon() {
+  return new Promise((resolve) => {
+    const img = new Image(48, 48);
+    img.onload = () => { map.addImage("tree-icon", img); resolve(); };
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(TREE_SVG)}`;
+  });
+}
+
 // ---- map layers ---------------------------------------------------------------
-map.on("load", () => {
+map.on("load", async () => {
+  await loadTreeIcon();
   map.addSource("trees", { type: "geojson", data: emptyFC() });
   map.addLayer({
     id: "trees",
     type: "circle",
     source: "trees",
+    filter: ["<", ["coalesce", ["get", "score"], 0], 0.55],
     paint: {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 4, 18, 9],
       "circle-color": [
@@ -57,6 +80,22 @@ map.on("load", () => {
       "circle-opacity": ["max", 0.25, ["coalesce", ["get", "confidence"], 0.25]],
       "circle-stroke-color": "#0c0f13",
       "circle-stroke-width": 1,
+    },
+  });
+  map.addLayer({
+    id: "trees-icons",
+    type: "symbol",
+    source: "trees",
+    filter: [">=", ["coalesce", ["get", "score"], 0], 0.55],
+    layout: {
+      "icon-image": "tree-icon",
+      "icon-size": ["interpolate", ["linear"], ["zoom"], 12, 0.5, 18, 1.05],
+      "icon-allow-overlap": true,
+      "icon-anchor": "bottom",
+    },
+    paint: {
+      // opacity still encodes confidence — cute never overrides honest
+      "icon-opacity": ["max", 0.35, ["coalesce", ["get", "confidence"], 0.35]],
     },
   });
 
@@ -77,9 +116,11 @@ map.on("load", () => {
   });
 
   map.on("click", onMapClick);
-  map.on("click", "trees", onTreeClick);
-  map.on("mouseenter", "trees", () => (map.getCanvas().style.cursor = "pointer"));
-  map.on("mouseleave", "trees", () => (map.getCanvas().style.cursor = ""));
+  for (const layer of ["trees", "trees-icons"]) {
+    map.on("click", layer, onTreeClick);
+    map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
+    map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
+  }
 
   search();
 });
@@ -251,7 +292,10 @@ function onTreeClick(e) {
   showDetail(t);
 }
 
+let currentTree = null;   // for the photo-analyzer inventory cross-check
+
 function showDetail(t) {
+  currentTree = t;
   $("detail").classList.remove("hidden");
   $("d-common").textContent = t.common || t.genus || "Unknown tree";
   $("d-sci").textContent = t.scientific || "";
@@ -427,3 +471,123 @@ map.on("dblclick", (e) => {
     polyBtn.textContent = "▱ polygon";
   }
 });
+
+/* ---- photo analyzer: assisted single-photo geometry -----------------------------
+ * Same pinhole model as tierC/geometry.py (metric_width / heights_from_rows):
+ * meters-per-pixel = distance / focal-length-px, focal from the horizontal FOV.
+ * The user supplies what the heavy CV models would otherwise detect — the four
+ * tap points. Estimates carry error bands; nothing here is a load rating.
+ */
+const PH_STEPS = [
+  "1 of 4 — tap the trunk base, right where it meets the ground 🌱",
+  "2 of 4 — tap the LEFT edge of the trunk at about chest height",
+  "3 of 4 — tap the RIGHT edge of the trunk at the same height",
+  "4 of 4 — tap the lowest branch you'd climb (where it joins the trunk) 🌿",
+];
+const PH_COLORS = ["#e2574c", "#3e8ef7", "#3e8ef7", "#2e9e5b"];
+const ph = { canvas: $("ph-canvas"), ctx: null, img: null, clicks: [] };
+
+$("ph-file").onchange = (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    ph.img = img;
+    ph.clicks = [];
+    // cap canvas resolution; CSS scales it to panel width
+    const w = Math.min(img.naturalWidth, 1400);
+    ph.canvas.width = w;
+    ph.canvas.height = Math.round(img.naturalHeight * (w / img.naturalWidth));
+    ph.ctx = ph.canvas.getContext("2d");
+    ph.canvas.style.display = "block";
+    $("ph-reset").style.display = "block";
+    $("ph-result").innerHTML = "";
+    phDraw();
+    $("ph-steps").textContent = PH_STEPS[0];
+    URL.revokeObjectURL(img.src);
+  };
+  img.src = URL.createObjectURL(file);
+};
+
+function phDraw() {
+  ph.ctx.drawImage(ph.img, 0, 0, ph.canvas.width, ph.canvas.height);
+  ph.clicks.forEach(([x, y], i) => {
+    ph.ctx.beginPath();
+    ph.ctx.arc(x, y, 7, 0, 2 * Math.PI);
+    ph.ctx.fillStyle = PH_COLORS[i];
+    ph.ctx.fill();
+    ph.ctx.lineWidth = 3;
+    ph.ctx.strokeStyle = "#fff";
+    ph.ctx.stroke();
+  });
+  if (ph.clicks.length >= 3) {   // breast-height width line
+    const [l, r] = [ph.clicks[1], ph.clicks[2]];
+    ph.ctx.beginPath(); ph.ctx.moveTo(l[0], l[1]); ph.ctx.lineTo(r[0], r[1]);
+    ph.ctx.strokeStyle = "#3e8ef7"; ph.ctx.lineWidth = 2.5; ph.ctx.stroke();
+  }
+  if (ph.clicks.length === 4) {  // base -> branch height line
+    const [b, br] = [ph.clicks[0], ph.clicks[3]];
+    ph.ctx.beginPath(); ph.ctx.moveTo(b[0], b[1]); ph.ctx.lineTo(b[0], br[1]);
+    ph.ctx.strokeStyle = "#2e9e5b"; ph.ctx.lineWidth = 2.5; ph.ctx.stroke();
+  }
+}
+
+ph.canvas.onclick = (e) => {
+  if (!ph.img || ph.clicks.length >= 4) return;
+  const rect = ph.canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (ph.canvas.width / rect.width);
+  const y = (e.clientY - rect.top) * (ph.canvas.height / rect.height);
+  ph.clicks.push([x, y]);
+  phDraw();
+  if (ph.clicks.length < 4) {
+    $("ph-steps").textContent = PH_STEPS[ph.clicks.length];
+  } else {
+    $("ph-steps").textContent = "Done! Here's your tree:";
+    phAnalyze();
+  }
+};
+
+$("ph-reset").onclick = () => {
+  ph.clicks = [];
+  $("ph-result").innerHTML = "";
+  if (ph.img) { phDraw(); $("ph-steps").textContent = PH_STEPS[0]; }
+};
+
+function phAnalyze() {
+  const dist = parseFloat($("ph-dist").value);
+  const fovDeg = parseFloat($("ph-fov").value) || 66;
+  if (!(dist > 0)) {
+    $("ph-result").innerHTML = `<div class="guess-note">Enter your distance to the trunk first, then Start over.</div>`;
+    return;
+  }
+  // focal length in px of the (possibly downscaled) canvas image
+  const fPx = (ph.canvas.width / 2) / Math.tan(((fovDeg * Math.PI) / 180) / 2);
+  const mPerPx = dist / fPx;
+
+  const [base, left, right, branch] = ph.clicks;
+  const dbhCm = Math.abs(right[0] - left[0]) * mPerPx * 100;
+  const branchM = Math.max(0, (base[1] - branch[1]) * mPerPx);
+  const dbhBand = dbhCm * 0.15, branchBand = branchM * 0.20;
+
+  // mount check against YOUR body (same rule as score/reach.py)
+  const h = parseFloat($("h").value) || 1.75;
+  const alpha = parseFloat($("alpha").value) || 1.22;
+  const mountCeiling = alpha * h + 0.30;
+  const canMount = branchM <= mountCeiling;
+
+  const rows = [
+    `Trunk ≈ <strong>${dbhCm.toFixed(0)} cm</strong> across (±${dbhBand.toFixed(0)})` +
+      (currentTree && currentTree.dbh_cm
+        ? ` — inventory says ${Math.round(currentTree.dbh_cm)} cm`
+        : ""),
+    `First branch ≈ <strong>${branchM.toFixed(1)} m</strong> up (±${branchBand.toFixed(1)})`,
+    canMount
+      ? `Within your reach (~${mountCeiling.toFixed(1)} m incl. a small pull-up) — you could mount this tree 🎉`
+      : `Above your reach (~${mountCeiling.toFixed(1)} m incl. a small pull-up) — you couldn't mount without aid`,
+  ];
+  $("ph-result").innerHTML =
+    `<ul class="facts">${rows.map((r) => `<li>${r}</li>`).join("")}</ul>` +
+    `<div class="hint">Single-photo estimate: assumes a level camera, a roughly
+     vertical trunk, and your distance guess. Branch <em>thickness</em> is not
+     measurable from taps — this is a reach check, never a load rating.</div>`;
+}
