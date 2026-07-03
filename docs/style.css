@@ -121,5 +121,33 @@ details summary { font-size: 12px; color: var(--muted); cursor: pointer; margin-
 #ph-steps { font-weight: 700; color: var(--accent-dark); }
 .hidden-btn { display: none; }
 
+/* confidence toggles */
+.conf-toggles { margin: 10px 0 2px; }
+.conf-title { display: block; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--accent-dark); font-weight: 800;
+  margin-bottom: 4px; }
+.conf-toggles .check { font-size: 12px; color: var(--muted); margin: 4px 0; }
+
+/* terms & waiver pop-up */
+#waiver-modal { position: fixed; inset: 0; background: rgba(35, 55, 35, 0.55);
+  display: flex; align-items: center; justify-content: center; z-index: 50;
+  backdrop-filter: blur(3px); }
+#waiver-modal.hidden { display: none; }
+.waiver-card { background: var(--panel); border: 2px solid var(--border);
+  border-radius: 22px; box-shadow: var(--shadow); max-width: 540px; width: 92%;
+  max-height: 86vh; display: flex; flex-direction: column; padding: 20px 22px; }
+.waiver-card h2 { margin: 0 0 6px; font-size: 19px; font-weight: 800; }
+.waiver-scroll { overflow-y: auto; min-height: 120px; font-size: 12px;
+  line-height: 1.55; color: var(--muted); background: var(--panel-2);
+  border: 2px solid var(--border); border-radius: 14px; padding: 12px 14px;
+  margin: 8px 0; }
+.waiver-scroll p { margin: 0 0 9px; }
+.waiver-scroll strong { color: var(--text); }
+.waiver-warning { background: #fdf1dc; border: 2px solid #ecc98a;
+  border-radius: 12px; padding: 9px 11px; font-size: 12px; font-weight: 700;
+  color: #7a5a1c; margin: 4px 0 6px; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button:disabled:hover { transform: none; background: var(--accent); }
+
 /* map buttons injected by JS */
 body > button { box-shadow: var(--shadow); width: auto; }
