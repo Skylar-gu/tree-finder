@@ -134,6 +134,11 @@ function onMapClick(e) {
     drawPolygon();
     return;
   }
+  if (polygon.length >= 3) {   // clicking elsewhere leaves area mode
+    polygon = [];
+    drawPolygon();
+    polyBtn.textContent = "▱ draw area";
+  }
   searchPoint = [e.lngLat.lng, e.lngLat.lat];
   if (searchMarker) searchMarker.remove();
   searchMarker = new maplibregl.Marker({ color: "#4ea36b" })
@@ -236,23 +241,25 @@ async function search() {
       low: $("conf-low").checked,
     };
 
+    // a finished polygon IS the search area; otherwise the radius circle is
+    const inArea = polygon.length >= 3
+      ? (t) => pointInPolygon([t.lon, t.lat], polygon)
+      : (t) => distanceM(searchPoint, [t.lon, t.lat]) <= radius;
     let trees = rows.filter((t) =>
-      distanceM(searchPoint, [t.lon, t.lat]) <= radius &&
+      inArea(t) &&
       tiersOn[confTier(t.confidence || 0)] &&
       (!publicOnly || t.eligible !== false));
     trees.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     trees = trees.slice(0, 500);
 
-    let feats = trees.map((t) => ({
+    const feats = trees.map((t) => ({
       type: "Feature",
       geometry: { type: "Point", coordinates: [t.lon, t.lat] },
       properties: { score: t.score, confidence: t.confidence, _raw: JSON.stringify(t) },
     }));
-    if (polygon.length >= 3) {
-      feats = feats.filter((f) => pointInPolygon(f.geometry.coordinates, polygon));
-    }
     map.getSource("trees").setData({ type: "FeatureCollection", features: feats });
-    setStatus(`${feats.length} candidate tree(s) — ${cityEntry.city} snapshot. ` +
+    const where = polygon.length >= 3 ? "in your drawn area" : `within ${radius} m`;
+    setStatus(`${feats.length} candidate tree(s) ${where} — ${cityEntry.city} snapshot. ` +
       `Ranked candidates, NOT a safety certification.`);
   } catch (err) {
     setStatus(`Search failed: ${err.message}`);
@@ -475,21 +482,63 @@ $("waiver-accept").onclick = () => {
   $("waiver-modal").classList.add("hidden");
 };
 
-// polygon toggle button injected into the map
+// polygon draw button — sits below the zoom controls so the detail panel
+// (top-right) can never cover it
 const polyBtn = document.createElement("button");
-polyBtn.textContent = "▱ polygon";
-polyBtn.style.cssText = "position:absolute;top:10px;right:10px;width:auto;z-index:4;";
+polyBtn.textContent = "▱ draw area";
+polyBtn.style.cssText =
+  "position:absolute;top:120px;left:10px;width:auto;z-index:4;margin:0;padding:8px 12px;";
 polyBtn.onclick = () => {
-  polygonMode = !polygonMode;
-  polyBtn.textContent = polygonMode ? "▱ drawing… (dbl-click to finish)" : "▱ polygon";
-  if (polygonMode) { polygon = []; drawPolygon(); }
+  if (polygonMode) {                    // cancel drawing
+    polygonMode = false;
+    polygon = [];
+    drawPolygon();
+    polyBtn.textContent = "▱ draw area";
+  } else if (polygon.length >= 3) {     // clear the finished area
+    polygon = [];
+    drawPolygon();
+    polyBtn.textContent = "▱ draw area";
+    drawRadius();
+    search();
+  } else {                              // start drawing
+    polygonMode = true;
+    polygon = [];
+    drawPolygon();
+    polyBtn.textContent = "▱ click corners… dbl-click to finish";
+  }
 };
-document.body.appendChild(polyBtn);
+map.getContainer().appendChild(polyBtn);
+
+function finishPolygon() {
+  polygonMode = false;
+  // the finishing dbl-click fires two click events first — drop duplicate tail points
+  const uniq = [];
+  for (const p of polygon) {
+    const last = uniq[uniq.length - 1];
+    if (!last || Math.abs(last[0] - p[0]) + Math.abs(last[1] - p[1]) > 1e-7) uniq.push(p);
+  }
+  polygon = uniq;
+  if (polygon.length < 3) {
+    polygon = [];
+    drawPolygon();
+    polyBtn.textContent = "▱ draw area";
+    setStatus("Area needs at least 3 corners — try again.");
+    return;
+  }
+  drawPolygon();
+  // center the search on the drawn area and let it replace the radius circle
+  searchPoint = polygon
+    .reduce((a, p) => [a[0] + p[0], a[1] + p[1]], [0, 0])
+    .map((v) => v / polygon.length);
+  if (searchMarker) searchMarker.remove();
+  map.getSource("radius").setData(emptyFC());
+  polyBtn.textContent = "✕ clear area";
+  search();
+}
 map.on("dblclick", (e) => {
   if (polygonMode) {
     e.preventDefault();
-    polygonMode = false;
-    polyBtn.textContent = "▱ polygon";
+    finishPolygon();
   }
 });
 
