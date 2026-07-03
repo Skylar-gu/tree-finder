@@ -117,12 +117,16 @@ def tree_photo_info(lat: float, lon: float, fetch=None) -> dict:
     grey "no imagery" tile, and computes the heading from the nearest panorama
     toward the tree so the image actually faces it.
     """
+    mly = None
     if _mapillary_token():
         mly = mapillary_photo_info(lat, lon, fetch=fetch)
         if mly.get("available"):
             return mly
     key = _google_key()
     if not key:
+        if mly is not None:  # Mapillary was tried — surface its actual reason
+            return {"available": False, "provider": None,
+                    "reason": f"mapillary: {mly.get('reason')}"}
         return {"available": False, "provider": None,
                 "reason": "no street-imagery provider configured "
                           "(set MAPILLARY_TOKEN or GOOGLE_MAPS_API_KEY)"}

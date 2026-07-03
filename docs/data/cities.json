@@ -1,0 +1,92 @@
+[
+ {
+  "source_id": "bloomington_trees",
+  "city": "Bloomington",
+  "center": [
+   -86.5264,
+   39.1653
+  ],
+  "count": 3906,
+  "file": "data/bloomington_trees.json"
+ },
+ {
+  "source_id": "buffalo_tree_inventory",
+  "city": "Buffalo",
+  "center": [
+   -78.8784,
+   42.8864
+  ],
+  "count": 1986,
+  "file": "data/buffalo_tree_inventory.json"
+ },
+ {
+  "source_id": "cambridge_street_trees",
+  "city": "Cambridge",
+  "center": [
+   -71.1097,
+   42.3736
+  ],
+  "count": 3997,
+  "file": "data/cambridge_street_trees.json"
+ },
+ {
+  "source_id": "denver_tree_inventory",
+  "city": "Denver",
+  "center": [
+   -104.9903,
+   39.7392
+  ],
+  "count": 3873,
+  "file": "data/denver_tree_inventory.json"
+ },
+ {
+  "source_id": "honolulu_exceptional_trees",
+  "city": "Honolulu",
+  "center": [
+   -157.8583,
+   21.3069
+  ],
+  "count": 32,
+  "file": "data/honolulu_exceptional_trees.json"
+ },
+ {
+  "source_id": "mesa_tree_inventory",
+  "city": "Mesa",
+  "center": [
+   -111.8315,
+   33.4152
+  ],
+  "count": 3999,
+  "file": "data/mesa_tree_inventory.json"
+ },
+ {
+  "source_id": "nyc_street_trees_2015",
+  "city": "New York",
+  "center": [
+   -73.9857,
+   40.7484
+  ],
+  "count": 3999,
+  "file": "data/nyc_street_trees_2015.json"
+ },
+ {
+  "source_id": "norfolk_tree_inventory",
+  "city": "Norfolk",
+  "center": [
+   -76.2859,
+   36.8508
+  ],
+  "count": 3949,
+  "file": "data/norfolk_tree_inventory.json"
+ },
+ {
+  "source_id": "sf_street_trees",
+  "city": "San Francisco",
+  "center": [
+   -122.4194,
+   37.7749
+  ],
+  "count": 3931,
+  "file": "data/sf_street_trees.json"
+ }
+]

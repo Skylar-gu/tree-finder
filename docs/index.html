@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Climbable-Trees — candidate finder</title>
+  <link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <link href="style.css" rel="stylesheet" />
+</head>
+<body>
+  <div id="sidebar">
+    <header>
+      <h1>Climbable-Trees <span class="tier">static demo</span></h1>
+      <p class="tagline">A ranked, confidence-tagged candidate list. This tool
+        <strong>filters and ranks</strong> — it never certifies that a tree is
+        safe to climb.</p>
+    </header>
+
+    <section class="panel">
+      <h2>City</h2>
+      <label>Jump to <select id="city"><option value="">— select a city —</option></select></label>
+      <p class="hint">Real municipal tree-inventory data, pre-scored and snapshotted
+        for this demo. Pick a city, then pan and Search to explore.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Your body</h2>
+      <label>Height (m) <input id="h" type="number" step="0.01" value="1.75" /></label>
+      <label>Weight (kg) <input id="weight" type="number" step="1" value="70" /></label>
+      <details>
+        <summary>Advanced tunables (placeholders, not physical truths)</summary>
+        <label>Δ inter-branch step (m) <input id="delta" type="number" step="0.05" value="0.60" /></label>
+        <label>d_min branch dia (cm) <input id="d_min" type="number" step="1" value="10" /></label>
+        <label>α ground-reach coeff <input id="alpha" type="number" step="0.01" value="1.22" /></label>
+      </details>
+    </section>
+
+    <section class="panel">
+      <h2>Search</h2>
+      <label>Radius (m) <input id="radius" type="number" step="50" value="500" /></label>
+      <label class="check"><input id="public_only" type="checkbox" checked /> Public / eligible trees only</label>
+      <label>Min score <input id="min_score" type="range" min="0" max="1" step="0.05" value="0" /> <span id="min_score_val">0</span></label>
+      <button id="search-here">Search this map center</button>
+      <p class="hint">Candidates load automatically at the map center. Click the
+        map to search elsewhere, or draw a polygon with the ▱ tool, then Search.</p>
+    </section>
+
+    <section class="panel" id="waiver-panel">
+      <h2>Waiver</h2>
+      <label class="check"><input id="waiver" type="checkbox" /> I understand this
+        is <strong>not a safety certification</strong>; branch data is a
+        form-based guess; I climb at my own risk.</label>
+    </section>
+
+    <section class="panel legend">
+      <h2>Confidence</h2>
+      <div class="legend-row"><span class="badge high">high</span> measured DBH + known species</div>
+      <div class="legend-row"><span class="badge med">medium</span> partial evidence</div>
+      <div class="legend-row"><span class="badge low">low</span> estimated / unknown species</div>
+      <p class="hint">Opacity on the map also encodes confidence. Coverage is
+        <em>doubly gated</em> and thinnest exactly where climbers want it most.</p>
+    </section>
+
+    <div id="status"></div>
+  </div>
+
+  <div id="map"></div>
+
+  <!-- Per-tree detail panel: name + photo up top, short facts, then the
+       honest detail (reach-match / why-scored / provenance) collapsed below.
+       Street photo credit (Mapillary contributor + logo/link, CC BY-SA)
+       renders directly under the image — a licensing obligation. -->
+  <aside id="detail" class="hidden">
+    <button id="detail-close">×</button>
+
+    <div class="detail-head">
+      <div class="detail-title">
+        <h2 id="d-common">—</h2>
+        <div id="d-sci" class="sci"></div>
+      </div>
+      <div id="d-photo" class="photo-slot compact">
+        <div class="photo-placeholder">—</div>
+      </div>
+    </div>
+
+    <ul id="d-facts" class="facts"></ul>
+
+    <details class="detail-block">
+      <summary>Reach-match</summary>
+      <div id="d-reach"></div>
+    </details>
+
+    <details class="detail-block">
+      <summary>Why scored</summary>
+      <ul id="d-why"></ul>
+    </details>
+
+    <details class="detail-block">
+      <summary>Provenance</summary>
+      <div id="d-prov"></div>
+    </details>
+
+    <details class="detail-block">
+      <summary>Report / correct</summary>
+      <p class="hint">Reporting needs the full app (this is a static snapshot) —
+        see the <a href="https://github.com/Skylar-gu/tree-finder" target="_blank"
+        rel="noopener">repository</a> to run it.</p>
+    </details>
+  </aside>
+
+  <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
