@@ -10,7 +10,7 @@
 <body>
   <div id="sidebar">
     <header>
-      <h1>Climbable-Trees <span class="tier">static demo</span></h1>
+      <h1>🌳 Climbable-Trees <span class="tier">candidate finder</span></h1>
       <p class="tagline">A ranked, confidence-tagged candidate list. This tool
         <strong>filters and ranks</strong> — it never certifies that a tree is
         safe to climb.</p>
@@ -54,6 +54,8 @@
 
     <section class="panel legend">
       <h2>Confidence</h2>
+      <div class="legend-row">🌳 tree icon = strong candidate (score ≥ 0.55);
+        amber/rust dots = weaker candidates</div>
       <div class="legend-row"><span class="badge high">high</span> measured DBH + known species</div>
       <div class="legend-row"><span class="badge med">medium</span> partial evidence</div>
       <div class="legend-row"><span class="badge low">low</span> estimated / unknown species</div>
@@ -98,6 +100,27 @@
     <details class="detail-block">
       <summary>Provenance</summary>
       <div id="d-prov"></div>
+    </details>
+
+    <details class="detail-block" id="d-analyze">
+      <summary>Analyze your own photo</summary>
+      <p class="hint">Photograph the whole trunk from a known distance, then tap
+        four points — the tool measures trunk thickness and first-branch height
+        with the same pinhole geometry the street-CV pipeline uses, and checks
+        the mount against <em>your</em> reach. Estimates carry error bands;
+        automatic branch detection (no tapping) is the documented ML upgrade.</p>
+      <label>Your distance to the trunk (m)
+        <input id="ph-dist" type="number" step="0.5" min="2" value="8" /></label>
+      <details>
+        <summary>Camera horizontal field of view</summary>
+        <label>FOV (°) <input id="ph-fov" type="number" step="1" min="30" max="120" value="66" /></label>
+        <p class="hint">~66° is a typical phone main camera. Wide/ultrawide lenses differ.</p>
+      </details>
+      <input id="ph-file" type="file" accept="image/*" />
+      <div id="ph-steps" class="hint"></div>
+      <canvas id="ph-canvas"></canvas>
+      <div id="ph-result"></div>
+      <button id="ph-reset" class="hidden-btn">Start over</button>
     </details>
 
     <details class="detail-block">
