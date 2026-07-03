@@ -151,3 +151,28 @@ button:disabled:hover { transform: none; background: var(--accent); }
 
 /* map buttons injected by JS */
 body > button { box-shadow: var(--shadow); width: auto; }
+
+/* sidebar drawer toggle — phones only */
+#sidebar-toggle { display: none; }
+@media (max-width: 720px) {
+  #sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; height: 100dvh;
+    width: 300px; min-width: 300px; z-index: 20;
+    transition: transform 0.25s ease; box-shadow: var(--shadow);
+  }
+  #sidebar.collapsed { transform: translateX(-100%); }
+  #sidebar-toggle {
+    display: flex; align-items: center; justify-content: center;
+    position: fixed; top: 50%; left: 300px; transform: translateY(-50%);
+    z-index: 21; width: 30px; height: 60px; margin: 0; padding: 0;
+    border-radius: 0 14px 14px 0; font-size: 18px; font-weight: 800;
+    transition: left 0.25s ease;
+  }
+  #sidebar.collapsed ~ #sidebar-toggle { left: 0; }
+  #map { width: 100vw; height: 100dvh; }
+  #detail {
+    top: auto; bottom: 12px; right: 12px; left: 12px; width: auto;
+    max-height: 62dvh;
+  }
+  .waiver-card { max-height: 92dvh; }
+}
