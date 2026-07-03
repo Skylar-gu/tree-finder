@@ -309,8 +309,9 @@ function showDetail(t) {
 
   // short facts — the at-a-glance summary (max 5)
   const tier = confTier(t.confidence || 0);
+  const tierName = { high: "high", med: "medium", low: "low" }[tier];
   const facts = [
-    `Score <strong>${pct(t.score)}</strong> · ${tier} confidence`,
+    `Score <strong>${pct(t.score)}</strong> · ${tierName} confidence`,
   ];
   if (t.height_m != null) facts.push(`Height ~<strong>${Math.round(t.height_m)} m</strong>`);
   if (t.dbh_cm != null) facts.push(`Trunk <strong>${Math.round(t.dbh_cm)} cm</strong> thick`);
